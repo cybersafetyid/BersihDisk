@@ -264,7 +264,11 @@ dipakai:
 | `feat!:` / `fix(scope)!:` | ditandai `**Breaking**` di sektornya |
 
 Setiap baris membawa short hash commit-nya, jadi entri bisa ditelusuri ke
-diff-nya. Setiap rilis juga berupa **git tag anotasi** `vX.Y.Z` — tag itulah yang
+diff-nya. `make publish` mengunggah **entri CHANGELOG yang sudah dikurasi** sebagai
+notes release bila versinya sudah tercatat di sana, dan baru memakai hasil generate
+commit bila belum.
+
+Setiap rilis juga berupa **git tag anotasi** `vX.Y.Z` — tag itulah yang
 dipakai pembaruan dalam aplikasi sebagai acuan, jadi versi tanpa tag belum
 menjadi rilis.
 

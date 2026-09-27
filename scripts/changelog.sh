@@ -45,6 +45,18 @@ else
 	RANGE="HEAD"
 fi
 
+# Release notes prefer the curated entry: if this version is already listed in
+# CHANGELOG.md, that section is the authoritative text for the GitHub release.
+CHANGELOG=${CHANGELOG:-CHANGELOG.md}
+if [ "$MODE" = notes ] && [ -f "$CHANGELOG" ] && grep -q "^## \[${VERSION}\]" "$CHANGELOG"; then
+	awk -v want="## [${VERSION}]" '
+		!keep && index($0, want) == 1 { keep = 1; next }
+		keep && /^## / { exit }
+		keep { print }
+	' "$CHANGELOG"
+	exit 0
+fi
+
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT INT TERM
 
@@ -89,7 +101,6 @@ case "$MODE" in
 	print) cat "$ENTRY"; exit 0 ;;
 esac
 
-CHANGELOG=${CHANGELOG:-CHANGELOG.md}
 if [ ! -f "$CHANGELOG" ]; then
 	printf '# Changelog\n\nAll notable changes to BersihDisk are documented here.\nThe format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n' > "$CHANGELOG"
 fi

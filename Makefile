@@ -15,11 +15,16 @@
 # =============================================================================
 
 # ---- Configuration ----------------------------------------------------------
+# Recipes are POSIX scripts; without this, make inherits SHELL=/bin/zsh from the
+# environment and zsh aborts on any glob that matches nothing (see publish).
+SHELL         := /bin/sh
+
 APP_NAME      := bersihdisk
 APP_TITLE     := BersihDisk
 VERSION_FILE  := VERSION
 GO            := go
 NPM           := npm
+GH            := gh
 
 # Wails CLI: the published v2.12.0 binary bundles an old golang.org/x/tools and
 # aborts on Go >= 1.24 ("internal error: package ... without types"), so prefer
@@ -274,13 +279,18 @@ release-notes:
 
 ## publish: create the GitHub release with dist artifacts + CHANGELOG notes
 publish: release-notes
-	@command -v gh >/dev/null 2>&1 || { echo "✘ gh CLI missing (brew install gh && gh auth login)"; exit 1; }
-	@test -n "$$(ls $(DIST_DIR)/$(APP_NAME)-v$(VERSION)*.zip $(DIST_DIR)/$(APP_NAME)-v$(VERSION)*.tar.gz 2>/dev/null)" || \
-		{ echo "✘ No v$(VERSION) artifacts in $(DIST_DIR)/ — run 'make release' first"; exit 1; }
-	gh release create "v$(VERSION)" -R $(REPO) \
+	@command -v $(GH) >/dev/null 2>&1 || { echo "✘ $(GH) not found (brew install gh && gh auth login)"; exit 1; }
+	@set --; \
+	for f in $(DIST_DIR)/$(APP_NAME)-v$(VERSION)*.zip $(DIST_DIR)/$(APP_NAME)-v$(VERSION)*.tar.gz; do \
+		[ -f "$$f" ] && set -- "$$@" "$$f"; \
+	done; \
+	if [ "$$#" -eq 0 ]; then \
+		echo "✘ No v$(VERSION) artifacts in $(DIST_DIR)/ — run 'make release' first"; exit 1; \
+	fi; \
+	echo "▶ Releasing v$(VERSION) with $$# artifact(s): $$*"; \
+	$(GH) release create "v$(VERSION)" -R $(REPO) \
 		--title "$(APP_TITLE) v$(VERSION)" \
-		--notes-file $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-notes.md \
-		$(DIST_DIR)/$(APP_NAME)-v$(VERSION)*.zip $(DIST_DIR)/$(APP_NAME)-v$(VERSION)*.tar.gz
+		--notes-file $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-notes.md "$$@"
 	@echo "✔ Published https://github.com/$(REPO)/releases/tag/v$(VERSION)"
 
 ## release-version: bump to VER=x.y.z then release (one-shot)

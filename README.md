@@ -317,7 +317,11 @@ are required:
 | `feat!:` / `fix(scope)!:` | marked `**Breaking**` in its section |
 
 Each line keeps its short commit hash, so any entry can be traced back to the
-diff. Every release is also an **annotated git tag** `vX.Y.Z` — that tag is what
+diff. `make publish` uploads the **curated CHANGELOG section** as the release
+notes when that version is already listed, and falls back to the freshly generated
+commit list otherwise.
+
+Every release is also an **annotated git tag** `vX.Y.Z` — that tag is what
 the in-app updater compares against, so a version without a tag is not a release.
 
 ```bash

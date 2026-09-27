@@ -174,6 +174,10 @@ This is why the commit prefixes in step 8 are mandatory rather than stylistic:
 before the colon marks the line **Breaking**. A subject with no prefix still
 appears, but under **Other** — so tag your work.
 
+The notes uploaded to GitHub come from the CHANGELOG section when the version is
+already listed there, so editing that entry before `make publish` is enough to
+fix the wording of a release.
+
 A version without a `vX.Y.Z` tag is not a release: the in-app updater compares
 against tags.
 
