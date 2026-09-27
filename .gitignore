@@ -1,0 +1,9 @@
+build/bin
+node_modules
+frontend/dist
+dist
+*.log
+*.test
+.DS_Store
+wails.json.bak
+frontend/package.json.md5

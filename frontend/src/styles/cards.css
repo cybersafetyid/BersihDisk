@@ -1,0 +1,132 @@
+/* ---------- Drive cards ---------- */
+.drive-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 14px;
+}
+
+.drive-card {
+  position: relative;
+  text-align: left;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  cursor: pointer;
+  color: var(--text);
+  transition: all var(--duration) var(--ease);
+  animation: rise 0.45s var(--ease) both;
+}
+.drive-card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: var(--shadow); }
+.drive-card.active {
+  border-color: var(--accent);
+  background: linear-gradient(160deg, var(--surface), color-mix(in srgb, var(--accent) 9%, var(--surface)));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent), var(--shadow);
+}
+
+.drive-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.drive-head svg { color: var(--text-muted); }
+.drive-card.active .drive-head svg { color: var(--accent); }
+.drive-name { font-weight: 700; font-size: 14.5px; flex: 1; }
+
+.check {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 13px; font-weight: 800;
+  border: 1.5px solid var(--border);
+  color: transparent;
+  transition: all var(--duration) var(--ease);
+}
+.check.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+  animation: pop 0.25s var(--ease);
+}
+
+.drive-bar {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.drive-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 0.7s var(--ease);
+}
+.drive-bar-fill.high { background: linear-gradient(90deg, var(--warning), #f59e0b); }
+.drive-bar-fill.critical { background: linear-gradient(90deg, var(--danger), #ef4444); }
+
+.drive-detail {
+  display: flex; justify-content: space-between;
+  font-size: 12px; color: var(--text-muted);
+  margin: 10px 0 6px;
+}
+.drive-path {
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.75;
+  font-family: ui-monospace, monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ---------- Category cards ---------- */
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: 12px;
+}
+
+.category-card {
+  text-align: left;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  cursor: pointer;
+  color: var(--text);
+  transition: all var(--duration) var(--ease);
+  animation: rise 0.45s var(--ease) both;
+}
+.category-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+.category-card.active {
+  border-color: var(--accent);
+  background: linear-gradient(160deg, var(--surface), color-mix(in srgb, var(--accent) 8%, var(--surface)));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.category-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.category-icon {
+  width: 40px; height: 40px;
+  display: grid; place-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--text);
+  transition: all var(--duration) var(--ease);
+}
+.category-card.active .category-icon {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
+}
+.category-name { font-weight: 700; font-size: 14px; }
+.category-desc {
+  font-size: 12px; color: var(--text-muted);
+  margin-top: 3px; line-height: 1.45;
+  min-height: 34px;
+}
+
+.category-badges { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+.badge {
+  font-size: 10.5px; font-weight: 700;
+  padding: 3px 8px; border-radius: 99px;
+  letter-spacing: 0.3px;
+}
+.badge-optional { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+.badge-risk { background: var(--danger-bg); color: var(--danger); }
+.badge-risk svg { vertical-align: -1px; }
+

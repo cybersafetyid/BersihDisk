@@ -1,0 +1,80 @@
+/* style.css — BersihDisk: design tokens, themes, components, animations. */
+
+/* ---------- Design tokens ---------- */
+:root {
+  --radius: 14px;
+  --radius-sm: 9px;
+  --font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --duration: 0.22s;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark theme — neutral matte black (no navy tint) */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0d0d0d;
+  --bg-2: #111111;
+  --surface: #161616;
+  --surface-2: #1d1d1d;
+  --border: #2a2a2a;
+  --text: #e8e8e8;
+  --text-muted: #909090;
+  --accent: #4f8cff;
+  --accent-2: #6ba1ff;
+  --accent-text: #ffffff;
+  --success: #34d399;
+  --danger: #f87171;
+  --danger-bg: rgba(248, 113, 113, 0.12);
+  --warning: #fbbf24;
+  --shadow: 0 10px 34px rgba(0, 0, 0, 0.55);
+}
+
+/* Light theme */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f4f4;
+  --bg-2: #ededed;
+  --surface: #ffffff;
+  --surface-2: #f5f5f5;
+  --border: #e2e2e2;
+  --text: #1c1c1c;
+  --text-muted: #666666;
+  --accent: #2f6bff;
+  --accent-2: #1e5af0;
+  --accent-text: #ffffff;
+  --success: #10b981;
+  --danger: #e5484d;
+  --danger-bg: rgba(229, 72, 77, 0.1);
+  --warning: #d97706;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Accent variants — declared after the themes so they win at equal specificity.
+   Chosen to stay legible on both the light and the dark surface. */
+[data-accent="blue"] { --accent: #4f8cff; --accent-2: #6ba1ff; --accent-text: #ffffff; }
+[data-accent="violet"] { --accent: #8b5cf6; --accent-2: #a78bfa; --accent-text: #ffffff; }
+[data-accent="teal"] { --accent: #14b8a6; --accent-2: #2dd4bf; --accent-text: #04231f; }
+[data-accent="amber"] { --accent: #f59e0b; --accent-2: #fbbf24; --accent-text: #241a02; }
+[data-accent="rose"] { --accent: #f43f5e; --accent-2: #fb7185; --accent-text: #ffffff; }
+
+[data-theme="light"][data-accent="blue"] { --accent: #2f6bff; --accent-2: #1e5af0; --accent-text: #ffffff; }
+[data-theme="light"][data-accent="violet"] { --accent: #7c3aed; --accent-2: #6d28d9; --accent-text: #ffffff; }
+[data-theme="light"][data-accent="teal"] { --accent: #0d9488; --accent-2: #0f766e; --accent-text: #ffffff; }
+[data-theme="light"][data-accent="amber"] { --accent: #d97706; --accent-2: #b45309; --accent-text: #ffffff; }
+[data-theme="light"][data-accent="rose"] { --accent: #e11d48; --accent-2: #be123c; --accent-text: #ffffff; }
+
+* { box-sizing: border-box; }html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--duration) var(--ease), color var(--duration) var(--ease);
+  user-select: none;
+}
+
+h1, h2, h3, p { margin: 0; }
+button { font-family: inherit; }
+
