@@ -169,6 +169,7 @@ make release    # check + build + zip into dist/ with release notes
 | `make install-deps` | install frontend dependencies |
 | `make doctor` | verify the toolchain (go, node, wails) |
 | `make install-wails-fix` | build the Go ≥ 1.24 compatible Wails CLI |
+| `make icons` | derive `build/appicon.png` + the in-app icon variants from `assets/logo.*` |
 | `make clean` / `distclean` | remove build output / plus `node_modules` |
 
 ### Versioning
@@ -203,6 +204,7 @@ GitHub exposes a `digest`, the download is SHA-256 verified automatically.
 ├── assets/                 brand logo (SVG source + PNG renders)
 ├── CHANGELOG.md            release history, newest first
 ├── scripts/changelog.sh    Conventional Commits -> CHANGELOG entry
+├── tools/iconvars/         derives the app-icon variants from assets/logo.png
 └── internal/
     ├── rules/              category definitions + matchers (dirNames, homePaths,
     │                       per-OS content filters) — fully unit tested

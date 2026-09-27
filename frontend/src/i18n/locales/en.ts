@@ -122,7 +122,6 @@ const en = {
     deleteFailedDetail: "{failed} failed — check folder permissions",
   },
   update: {
-    pill: "Update",
     available: "Update to {version}",
     checking: "Checking…",
     checkFailed: "Could not check for updates",

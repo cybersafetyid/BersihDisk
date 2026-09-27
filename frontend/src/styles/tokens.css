@@ -78,3 +78,29 @@ body {
 h1, h2, h3, p { margin: 0; }
 button { font-family: inherit; }
 
+/* One checkbox everywhere: the OS widget differs per platform and cannot be
+   tinted reliably, so the box and its check mark are drawn from tokens. */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 17px; height: 17px;
+  flex-shrink: 0;
+  display: grid; place-items: center;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all var(--duration) var(--ease);
+}
+input[type="checkbox"]:hover { border-color: var(--accent); }
+input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+input[type="checkbox"]:checked::after {
+  content: "✓";
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+input[type="checkbox"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+input[type="checkbox"]:disabled { opacity: 0.5; cursor: not-allowed; }
+

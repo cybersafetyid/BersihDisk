@@ -6,7 +6,7 @@ import { useI18n } from "../i18n/i18n";
 import { useSettings, updateSettings } from "../lib/settings";
 import type { AccentKey, IconKey } from "../lib/settings";
 import { iconAssets, iconKeys, iconBase64 } from "../lib/appIcons";
-import { DONATION_URL, POLICY_DATE, SUPPORT_EMAIL } from "../lib/links";
+import { APP_AUTHOR, APP_TECH, DONATION_URL, POLICY_DATE, SUPPORT_EMAIL } from "../lib/links";
 import { visibleSections } from "./sections";
 import type { Section } from "./sections";
 import * as api from "../backend";
@@ -230,8 +230,8 @@ export function SettingsPage({ section, onSection, onClose, onNotify, iconSuppor
               <p className="settings-lead">{t("about.body")}</p>
               <Row label={t("appinfo.name")} value={t("app.title")} />
               <Row label={t("settings.versionLabel")} value={version || "—"} />
-              <Row label={t("settings.authorLabel")} value="Gorby Permana" />
-              <Row label={t("settings.techLabel")} value="Wails · Go · React · TypeScript" />
+              <Row label={t("settings.authorLabel")} value={APP_AUTHOR} />
+              <Row label={t("settings.techLabel")} value={APP_TECH} />
               <Row label={t("settings.licenseLabel")} value={t("settings.licenseValue")} />
             </>
           )}

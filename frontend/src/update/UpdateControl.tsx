@@ -113,15 +113,17 @@ export function UpdateControl({ onNotify, auto, openSignal }: Props) {
 
   return (
     <>
-      <button
-        className={`btn btn-ghost btn-small update-pill ${info?.available ? "available" : ""}`}
-        onClick={() => (info?.available ? (setError(""), setPhase("idle"), setOpen(true)) : void check(true))}
-        disabled={checking}
-        title={info?.available ? t("update.available", { version: info.latest }) : t("settings.checkNow")}
-      >
-        <Icon name={info?.available ? "download" : "refresh"} size={15} />
-        <span>{checking ? t("update.checking") : info?.available ? t("update.available", { version: info.latest }) : t("update.pill")}</span>
-      </button>
+      {info?.available && (
+        <button
+          className="btn btn-ghost btn-small update-pill available"
+          onClick={() => { setError(""); setPhase("idle"); setOpen(true); }}
+          disabled={checking}
+          title={t("update.available", { version: info.latest })}
+        >
+          <Icon name="download" size={15} />
+          <span>{checking ? t("update.checking") : t("update.available", { version: info.latest })}</span>
+        </button>
+      )}
 
       {open && info && (
         <div

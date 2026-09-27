@@ -22,11 +22,11 @@ export function ThemeSwitch() {
           role="radio"
           aria-checked={theme === o.value}
           title={t("theme.preset", { name: t(o.labelKey) })}
+          aria-label={t(o.labelKey)}
           className={`theme-btn ${theme === o.value ? "active" : ""}`}
           onClick={() => updateSettings({ theme: o.value })}
         >
-          <Icon name={o.icon} size={14} />
-          <span className="theme-label">{t(o.labelKey)}</span>
+          <Icon name={o.icon} size={15} />
         </button>
       ))}
     </div>

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="bd-title bd-desc">
+  <title id="bd-title">BersihDisk</title>
+  <desc id="bd-desc">Dark rounded tile: a blue disk platter with a bright cyan sweep wiping its surface.</desc>
+  <defs>
+    <linearGradient id="bd-tile" x1="96" y1="32" x2="416" y2="480" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1c212a"/>
+      <stop offset="1" stop-color="#0a0c10"/>
+    </linearGradient>
+    <linearGradient id="bd-platter" x1="118" y1="106" x2="398" y2="406" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7ab0ff"/>
+      <stop offset="0.55" stop-color="#4f8cff"/>
+      <stop offset="1" stop-color="#2f6bff"/>
+    </linearGradient>
+    <linearGradient id="bd-sweep" x1="104" y1="404" x2="404" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7dd3fc" stop-opacity="0"/>
+      <stop offset="0.38" stop-color="#bdeaff" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.85"/>
+    </linearGradient>
+    <radialGradient id="bd-sheen" cx="0.32" cy="0.16" r="0.85">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="bd-disk">
+      <circle cx="256" cy="256" r="152"/>
+    </clipPath>
+  </defs>
+
+  <rect x="16" y="16" width="480" height="480" rx="116" fill="url(#bd-tile)"/>
+  <rect x="16" y="16" width="480" height="480" rx="116" fill="url(#bd-sheen)"/>
+  <rect x="17.5" y="17.5" width="477" height="477" rx="114.5" fill="none" stroke="#33405a" stroke-width="3"/>
+
+  <g clip-path="url(#bd-disk)">
+    <circle cx="256" cy="256" r="152" fill="#111a2b"/>
+    <g fill="none" stroke="url(#bd-platter)">
+      <circle cx="256" cy="256" r="152" stroke-width="26"/>
+      <circle cx="256" cy="256" r="122" stroke-width="5" opacity="0.45"/>
+      <circle cx="256" cy="256" r="96" stroke-width="5" opacity="0.3"/>
+    </g>
+    <circle cx="256" cy="256" r="46" fill="#0a0c10"/>
+    <circle cx="256" cy="256" r="46" fill="none" stroke="url(#bd-platter)" stroke-width="14"/>
+    <circle cx="256" cy="256" r="11" fill="#7dd3fc"/>
+    <g fill="none" stroke="url(#bd-sweep)" stroke-linecap="round">
+      <path d="M108 392 C 198 324, 296 216, 396 116" stroke-width="20"/>
+      <path d="M92 348 C 182 282, 274 186, 356 96" stroke-width="8" opacity="0.5"/>
+    </g>
+  </g>
+
+  <g fill="#a5e6ff">
+    <path d="M430 172 l9 23 23 9 -23 9 -9 23 -9 -23 -23 -9 23 -9 z" opacity="0.95"/>
+    <path d="M86 300 l6 16 16 6 -16 6 -6 16 -6 -16 -16 -6 16 -6 z" opacity="0.6"/>
+  </g>
+</svg>

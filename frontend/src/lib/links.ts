@@ -9,3 +9,7 @@ export const DONATION_URL = "https://github.com/sponsors/cybersafetyid";
 
 /** Effective date shown on the policy pages. */
 export const POLICY_DATE = "2026-09-27";
+
+/** Product facts shown in About — names, not translatable copy. */
+export const APP_AUTHOR = "Gorby Permana";
+export const APP_TECH = "Wails · Go · React · TypeScript";

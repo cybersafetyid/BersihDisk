@@ -14,7 +14,7 @@ import { SettingsMenu } from "./settings/SettingsMenu";
 import { SettingsPage } from "./settings/SettingsPage";
 import type { Section } from "./settings/sections";
 import { Toast, type ToastData } from "./common/Toast";
-import { Icon } from "./common/Icon";
+import brandLogo from "./assets/brand/logo.svg";
 
 import { useAppliedSettings } from "./hooks/useAppliedSettings";
 import { useI18n } from "./i18n/i18n";
@@ -186,7 +186,7 @@ export default function App() {
       <header className="header">
         <div className="brand">
           <span className="brand-icon">
-            <Icon name="eraser" size={26} color="#fff" />
+            <img src={brandLogo} alt="" width={52} height={52} />
           </span>
           <div>
             <h1>{t("app.title")}</h1>
@@ -194,9 +194,9 @@ export default function App() {
           </div>
         </div>
         <div className="header-actions">
-          <SettingsMenu iconSupported={iconSupported} onOpen={openSettings} />
-          <UpdateControl onNotify={notify} auto={settings.autoUpdate} openSignal={updateSignal} />
           <ThemeSwitch />
+          <UpdateControl onNotify={notify} auto={settings.autoUpdate} openSignal={updateSignal} />
+          <SettingsMenu iconSupported={iconSupported} onOpen={openSettings} />
         </div>
       </header>
 

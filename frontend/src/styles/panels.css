@@ -142,7 +142,7 @@
 }
 .item-row:hover { background: var(--surface-2); }
 .item-row.checked { background: color-mix(in srgb, var(--accent) 10%, transparent); }
-.item-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.item-row input[type="checkbox"] { cursor: pointer; }
 .item-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .item-path {
   font-family: ui-monospace, monospace;

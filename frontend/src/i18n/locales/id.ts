@@ -123,7 +123,6 @@ const id = {
     deleteFailedDetail: "{failed} gagal — periksa izin folder",
   },
   update: {
-    pill: "Perbarui",
     available: "Perbarui ke {version}",
     checking: "Memeriksa…",
     checkFailed: "Gagal memeriksa pembaruan",

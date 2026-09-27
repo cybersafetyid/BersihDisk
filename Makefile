@@ -46,12 +46,18 @@ CHANGELOG_SH  := scripts/changelog.sh
 # macOS build targets.
 MAC_ARCH      := $(shell uname -m)
 
+# Brand artwork: the logo is the single source, every icon is derived from it.
+LOGO_SVG      := assets/logo.svg
+LOGO_PNG      := assets/logo.png
+BUNDLE_ICON   := build/appicon.png
+ICON_VARIANTS := frontend/src/assets/icons
+
 .DEFAULT_GOAL := help
 .PHONY: help run dev build build-darwin build-windows build-linux build-all \
         frontend frontend-dev test test-go test-frontend vet lint fmt tidy \
         check clean distclean bump patch minor major release release-version \
         changelog changelog-preview tag release-notes publish \
-        install-deps install-wails-fix doctor
+        install-deps install-wails-fix doctor icons
 
 # =============================================================================
 # Run & Development
@@ -115,6 +121,23 @@ frontend:
 install-deps:
 	cd frontend && $(NPM) install
 
+## icons: derive the bundle icon and the in-app icon variants from the brand logo
+icons:
+	@echo "▶ Generating icons from $(LOGO_PNG)..."
+	@test -f $(LOGO_PNG) || { echo "✘ $(LOGO_PNG) is missing"; exit 1; }
+	@tmp=$$(mktemp -d); \
+	if command -v qlmanage >/dev/null 2>&1 && qlmanage -t -s 1024 -o $$tmp $(LOGO_SVG) >/dev/null 2>&1 \
+		&& [ -f $$tmp/$(notdir $(LOGO_SVG)).png ]; then \
+			mv $$tmp/$(notdir $(LOGO_SVG)).png $(BUNDLE_ICON); \
+			echo "✔ $(BUNDLE_ICON) rendered at 1024 from $(LOGO_SVG)"; \
+		else \
+			cp $(LOGO_PNG) $(BUNDLE_ICON); \
+			echo "✔ $(BUNDLE_ICON) copied from $(LOGO_PNG) (no SVG renderer here)"; \
+		fi; \
+	rm -rf $$tmp
+	$(GO) run ./tools/iconvars -src $(LOGO_PNG) -out $(ICON_VARIANTS)
+	@echo "✔ Next: make build (or make run) to ship the new icon"
+
 # =============================================================================
 # Quality: test / vet / fmt / lint
 # =============================================================================
@@ -125,7 +148,7 @@ test: test-go test-frontend
 ## test-go: run Go unit tests with -race
 test-go:
 	@echo "▶ Go tests..."
-	$(GO) test -race ./internal/...
+	$(GO) test -race ./internal/... ./tools/...
 
 ## test-frontend: TypeScript typecheck
 test-frontend:
