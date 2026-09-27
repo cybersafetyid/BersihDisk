@@ -155,7 +155,7 @@ Perintah harian lewat `make` (lihat `make help`):
 | `make changelog` | sisipkan entri itu ke `CHANGELOG.md` |
 | `make tag` | buat git tag anotasi `v<versi>` pada HEAD |
 | `make release-notes` | tulis `dist/bersihdisk-v<versi>-notes.md` dari entri |
-| `make publish` | buat release GitHub berisi artefak + notes |
+| `make publish` | dorong tag, lalu buat release GitHub berisi artefak + notes |
 | `make install-deps` / `make doctor` | pasang dependensi frontend / cek toolchain |
 | `make install-wails-fix` | build CLI wails yang kompatibel Go ≥ 1.24 |
 | `make clean` / `distclean` | bersihkan build / + `node_modules` |
@@ -277,8 +277,15 @@ make changelog-preview              # uji cetak: entri untuk VERSION
 make changelog                      # sisipkan entri itu ke CHANGELOG.md
 make tag                            # git tag -a v<versi>
 make release                        # check + build + paket, lalu changelog + tag + notes
-make publish                        # release GitHub: artefak + notes dari CHANGELOG
+make publish                        # dorong tag, lalu buat release GitHub
 ```
+
+`make publish` adalah satu-satunya target yang menulis ke remote: ia mendorong branch
+saat commit yang di-tag belum ada di sana, mendorong tag anotasi, lalu membuat release
+dengan `--verify-tag` sehingga `gh` tidak bisa mengarang tag dari commit yang bukan
+maksudmu. Target ini menolak working tree yang kotor kecuali kamu kirim
+`ALLOW_DIRTY=1`, dan `make publish GH=echo GIT_PUSH=echo` menampilkan perintah aslinya
+tanpa menjalankannya.
 
 `make release` tidak mengarang riwayat: tanpa commit ia memberi peringatan dan
 melewati entri beserta tag, alih-alih menulis entri kosong.

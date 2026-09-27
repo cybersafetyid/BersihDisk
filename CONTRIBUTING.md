@@ -165,7 +165,7 @@ make changelog-preview   # see exactly what would be written for VERSION
 make changelog           # prepend the entry into CHANGELOG.md
 make tag                 # annotate HEAD as v<version>
 make release             # check + build + package, then changelog + tag + notes
-make publish             # GitHub release from dist/ artifacts + the notes file
+make publish             # push the tag, then the GitHub release from dist/ artifacts
 ```
 
 This is why the commit prefixes in step 8 are mandatory rather than stylistic:
@@ -173,6 +173,12 @@ This is why the commit prefixes in step 8 are mandatory rather than stylistic:
 `perf|refactor|docs|test|i18n|build|ci|chore|style` under **Changed**; a `!`
 before the colon marks the line **Breaking**. A subject with no prefix still
 appears, but under **Other** — so tag your work.
+
+`make publish` is the step that touches the remote: it pushes the branch and the
+annotated tag when they are missing, and releases with `--verify-tag` so a tag you
+never pushed cannot be replaced by one gh invents from the default branch. It also
+stops on a dirty working tree unless you pass `ALLOW_DIRTY=1`; use
+`make publish GH=echo GIT_PUSH=echo` to preview the commands.
 
 The notes uploaded to GitHub come from the CHANGELOG section when the version is
 already listed there, so editing that entry before `make publish` is enough to

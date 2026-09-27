@@ -25,6 +25,7 @@ VERSION_FILE  := VERSION
 GO            := go
 NPM           := npm
 GH            := gh
+GIT_PUSH      := git push
 
 # Wails CLI: the published v2.12.0 binary bundles an old golang.org/x/tools and
 # aborts on Go >= 1.24 ("internal error: package ... without types"), so prefer
@@ -277,9 +278,34 @@ release-notes:
 		> $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-notes.md
 	@echo "✔ Notes: $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-notes.md"
 
-## publish: create the GitHub release with dist artifacts + CHANGELOG notes
+## publish: push the tag, then create the GitHub release with artifacts + notes
 publish: release-notes
 	@command -v $(GH) >/dev/null 2>&1 || { echo "✘ $(GH) not found (brew install gh && gh auth login)"; exit 1; }
+	@git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null || \
+		{ echo "✘ No local tag v$(VERSION) — run 'make tag' first"; exit 1; }
+	@if [ -n "$$(git status --porcelain)" ] && [ -z "$(ALLOW_DIRTY)" ]; then \
+		echo "✘ Working tree is dirty — v$(VERSION) would not match the files you are releasing."; \
+		echo "  Commit the changes, or re-run with ALLOW_DIRTY=1 to publish anyway."; exit 1; \
+	fi
+	@branch=$$(git rev-parse --abbrev-ref HEAD); \
+	tag_commit=$$(git rev-list -n1 v$(VERSION)); \
+	if ! git merge-base --is-ancestor "$$tag_commit" HEAD; then \
+		echo "✘ v$(VERSION) points at $$tag_commit, which is not part of $$branch."; \
+		echo "  Delete it (git tag -d v$(VERSION)) and run 'make tag' on the commit to release."; \
+		exit 1; \
+	fi; \
+	if [ "$$tag_commit" != "$$(git rev-parse HEAD)" ]; then \
+		echo "ℹ Releasing $$tag_commit — HEAD is $$(git rev-parse --short HEAD)"; \
+	fi; \
+	remote_head=$$(git ls-remote origin -h "refs/heads/$$branch" | cut -f1); \
+	if [ -z "$$remote_head" ] || ! git merge-base --is-ancestor "$$tag_commit" "$$remote_head"; then \
+		echo "▶ origin/$$branch does not contain the tagged commit — pushing $$branch"; \
+		$(GIT_PUSH) origin "$$branch"; \
+	fi; \
+	if [ "$$(git ls-remote origin -t "refs/tags/v$(VERSION)" | cut -f1)" != "$$tag_commit" ]; then \
+		echo "▶ Pushing annotated tag v$(VERSION) to origin"; \
+		$(GIT_PUSH) origin "refs/tags/v$(VERSION)"; \
+	fi
 	@set --; \
 	for f in $(DIST_DIR)/$(APP_NAME)-v$(VERSION)*.zip $(DIST_DIR)/$(APP_NAME)-v$(VERSION)*.tar.gz; do \
 		[ -f "$$f" ] && set -- "$$@" "$$f"; \
@@ -288,7 +314,7 @@ publish: release-notes
 		echo "✘ No v$(VERSION) artifacts in $(DIST_DIR)/ — run 'make release' first"; exit 1; \
 	fi; \
 	echo "▶ Releasing v$(VERSION) with $$# artifact(s): $$*"; \
-	$(GH) release create "v$(VERSION)" -R $(REPO) \
+	$(GH) release create "v$(VERSION)" -R $(REPO) --verify-tag \
 		--title "$(APP_TITLE) v$(VERSION)" \
 		--notes-file $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-notes.md "$$@"
 	@echo "✔ Published https://github.com/$(REPO)/releases/tag/v$(VERSION)"

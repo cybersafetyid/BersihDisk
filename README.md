@@ -165,7 +165,7 @@ make release    # check + build + zip into dist/ with release notes
 | `make changelog` | prepend that entry into `CHANGELOG.md` |
 | `make tag` | create the annotated git tag `v<version>` on HEAD |
 | `make release-notes` | write `dist/bersihdisk-v<version>-notes.md` from the entry |
-| `make publish` | create the GitHub release with artifacts + notes |
+| `make publish` | push the tag, then create the GitHub release with artifacts + notes |
 | `make install-deps` | install frontend dependencies |
 | `make doctor` | verify the toolchain (go, node, wails) |
 | `make install-wails-fix` | build the Go ≥ 1.24 compatible Wails CLI |
@@ -329,8 +329,14 @@ make changelog-preview              # dry run: print the entry for VERSION
 make changelog                      # prepend it into CHANGELOG.md
 make tag                            # git tag -a v<version>
 make release                        # check + build + package, then changelog + tag + notes
-make publish                        # GitHub release: artifacts + notes from CHANGELOG
+make publish                        # push the tag, then the GitHub release
 ```
+
+`make publish` is the only target that writes to the remote: it pushes the current
+branch when the tagged commit is missing there, pushes the annotated tag, and then
+creates the release with `--verify-tag`, so `gh` can never invent a tag from a commit
+you did not intend. It refuses a dirty working tree unless you pass `ALLOW_DIRTY=1`,
+and `make publish GH=echo GIT_PUSH=echo` shows the exact commands without running them.
 
 `make release` will not invent history: with no commits it warns and skips the
 entry and the tag instead of writing an empty one.
