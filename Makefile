@@ -307,13 +307,14 @@ publish: verify
 		echo "✘ Untracked files would not be part of v$(VERSION):"; git status --short; \
 		echo "  Add or remove them, or re-run with ALLOW_DIRTY=1."; exit 1; \
 	fi
-	@# A tag that was never pushed and lags HEAD (made by an earlier run, before the last
-	@# commits) would release stale code. Retag it, or stop.
+	@# A tag that lags HEAD (made by an earlier run, before the last commits) would release
+	@# stale code. Retag it, or stop. An unpushed tag is moved freely; one already on origin
+	@# is moved only with RETAG=1 (which force-pushes it) — e.g. after a failed release.
 	@if git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null && \
-		[ -z "$$(git ls-remote origin -t "refs/tags/v$(VERSION)" | cut -f1)" ] && \
+		{ [ -z "$$(git ls-remote origin -t "refs/tags/v$(VERSION)" | cut -f1)" ] || [ "$(RETAG)" = "1" ]; } && \
 		[ "$$(git rev-list -n1 v$(VERSION))" != "$$(git rev-parse HEAD)" ]; then \
 		if [ "$(RETAG)" = "1" ]; then \
-			echo "▶ Moving unpushed tag v$(VERSION) to HEAD"; git tag -d "v$(VERSION)" >/dev/null; \
+			echo "▶ Moving tag v$(VERSION) to HEAD"; git tag -d "v$(VERSION)" >/dev/null; \
 		else \
 			echo "✘ Local tag v$(VERSION) is behind HEAD and was never pushed, so it would release older code."; \
 			echo "  Move it with: make publish RETAG=1   (or: git tag -d v$(VERSION))"; exit 1; \
@@ -332,12 +333,17 @@ publish: verify
 		echo "▶ origin/$$branch does not contain the tagged commit — pushing $$branch"; \
 		$(GIT_PUSH) origin "$$branch"; \
 	fi; \
-	if [ "$$(git ls-remote origin -t "refs/tags/v$(VERSION)" | cut -f1)" = "$$tag_commit" ]; then \
+	remote_tag=$$(git ls-remote origin "refs/tags/v$(VERSION)^{}" | cut -f1); \
+	if [ "$$remote_tag" = "$$tag_commit" ]; then \
 		echo "▶ v$(VERSION) is already on origin — re-running the release workflow"; \
 		$(GH) workflow run release.yml -R $(REPO) -f tag=v$(VERSION) -f ref=v$(VERSION); \
 	else \
+		if [ -n "$$remote_tag" ] && [ "$(RETAG)" != "1" ]; then \
+			echo "✘ v$(VERSION) on origin points at $${remote_tag}, not the commit to release ($$tag_commit)."; \
+			echo "  Move it with: make publish RETAG=1   (force-pushes the tag; use only for an unreleased version)"; exit 1; \
+		fi; \
 		echo "▶ Pushing annotated tag v$(VERSION) — this starts the Release workflow"; \
-		$(GIT_PUSH) origin "refs/tags/v$(VERSION)"; \
+		$(GIT_PUSH) $(if $(filter 1,$(RETAG)),--force) origin "refs/tags/v$(VERSION)"; \
 	fi
 	@if [ "$(WATCH)" != "0" ]; then \
 		echo "▶ Waiting for the Release workflow (Ctrl-C stops watching, not the build)..."; \

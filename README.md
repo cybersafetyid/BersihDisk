@@ -337,7 +337,10 @@ make publish           # release commit + tag + push; GitHub Actions does the re
 4. Watch the workflow (`WATCH=0` skips this).
 
 It refuses untracked files and a local tag that lags HEAD (`RETAG=1` moves it). If
-the tag is already on origin it re-runs the workflow for that tag instead.
+the tag is already on origin at the release commit it re-runs the workflow for that
+tag instead. If the tag on origin points at an *older* commit — a release that failed
+and was then fixed — publish stops and `make publish RETAG=1` moves the tag to HEAD and
+force-pushes it (only do this for a version that never produced a release).
 `make publish GH=echo GIT_PUSH=echo` prints the git/gh commands without running
 them. `make release` builds this OS locally, to check what CI will build.
 
