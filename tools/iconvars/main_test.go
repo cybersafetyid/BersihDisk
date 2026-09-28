@@ -3,6 +3,9 @@ package main
 import (
 	"image"
 	"image/color"
+	"image/png"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -56,11 +59,46 @@ func TestFillCanvasRemovesMargin(t *testing.T) {
 			src.SetNRGBA(x, y, color.NRGBA{R: 200, G: 10, B: 10, A: 255})
 		}
 	}
-	out := fillCanvas(src, 64)
+	out := fillCanvas(src, 64, 0)
 	if got := out.NRGBAAt(1, 32); got.A != 255 {
 		t.Errorf("left edge alpha = %d, want opaque artwork right at the edge", got.A)
 	}
 	if got := out.NRGBAAt(32, 62); got.R != 200 || got.A != 255 {
 		t.Errorf("bottom edge = %+v, want the artwork colour", got)
+	}
+}
+
+// The bundle icon is an opaque square: no transparent corner may survive.
+func TestWriteBundleIsOpaqueSquare(t *testing.T) {
+	src := image.NewNRGBA(image.Rect(0, 0, 100, 100))
+	for y := 10; y < 90; y++ {
+		for x := 10; x < 90; x++ {
+			// A rounded tile: cut the corners.
+			dx, dy := float64(min(x-10, 89-x)), float64(min(y-10, 89-y))
+			if dx < 20 && dy < 20 && (20-dx)*(20-dx)+(20-dy)*(20-dy) > 400 {
+				continue
+			}
+			src.SetNRGBA(x, y, color.NRGBA{R: 30, G: 40, B: 50, A: 255})
+		}
+	}
+	dst := filepath.Join(t.TempDir(), "icon.png")
+	if err := writeBundle(src, dst); err != nil {
+		t.Fatal(err)
+	}
+	f, err := os.Open(dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	out, err := png.Decode(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := out.Bounds().Dx()
+	for _, p := range [][2]int{{0, 0}, {w - 1, 0}, {0, w - 1}, {w - 1, w - 1}} {
+		r, _, _, a := out.At(p[0], p[1]).RGBA()
+		if a>>8 != 255 || r>>8 > 100 {
+			t.Errorf("corner %v = r%d a%d, want an opaque dark pixel (no white plate colour)", p, r>>8, a>>8)
+		}
 	}
 }

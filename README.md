@@ -117,13 +117,13 @@ Grab the latest build for your platform from
 
 | OS | File | Install |
 |---|---|---|
-| macOS (Apple Silicon + Intel) | `bersihdisk-vX.Y.Z-macos-universal.dmg` | open the `.dmg`, drag BersihDisk to *Applications* |
-| Windows 10/11 (x64) | `bersihdisk-vX.Y.Z-windows-x86_64-setup.exe` | run the installer (asks for admin rights) |
-| Windows, no install | `bersihdisk-vX.Y.Z-windows-x86_64-portable.zip` | extract and run `bersihdisk.exe` |
-| Linux (Debian/Ubuntu, x64) | `bersihdisk-vX.Y.Z-linux-x86_64.deb` | `sudo apt install ./bersihdisk-*.deb` |
-| Linux, other distros | `bersihdisk-vX.Y.Z-linux-x86_64.tar.gz` | extract and run `./bersihdisk` |
+| macOS (Apple Silicon + Intel) | `BersihDisk-vX.Y.Z-macos-universal.dmg` | open the `.dmg`, drag BersihDisk to *Applications* |
+| Windows 10/11 (x64) | `BersihDisk-vX.Y.Z-windows-x86_64-setup.exe` | run the installer (asks for admin rights) |
+| Windows, no install | `BersihDisk-vX.Y.Z-windows-x86_64-portable.zip` | extract and run `BersihDisk.exe` |
+| Linux (Debian/Ubuntu, x64) | `BersihDisk-vX.Y.Z-linux-x86_64.deb` | `sudo apt install ./BersihDisk-*.deb` |
+| Linux, other distros | `BersihDisk-vX.Y.Z-linux-x86_64.tar.gz` | extract and run `./BersihDisk` |
 
-`bersihdisk-vX.Y.Z-SHA256SUMS.txt` lists a checksum for every file.
+`BersihDisk-vX.Y.Z-SHA256SUMS.txt` lists a checksum for every file.
 
 The builds are **not code-signed or notarised**. On macOS a file downloaded in a
 browser is quarantined: right-click the app → *Open* the first time (files fetched
@@ -167,7 +167,7 @@ runs on** (Wails cannot cross-compile a cgo app):
 
 | Run on | Output in `dist/` |
 |---|---|
-| macOS | `bersihdisk-vX.Y.Z-macos-universal.dmg` (arm64 + x86_64, ad-hoc signed) |
+| macOS | `BersihDisk-vX.Y.Z-macos-universal.dmg` (arm64 + x86_64, ad-hoc signed) |
 | Windows | `…-windows-x86_64-setup.exe` (NSIS) and `…-windows-x86_64-portable.zip` |
 | Linux | `…-linux-x86_64.deb` and `…-linux-x86_64.tar.gz` |
 
@@ -195,7 +195,7 @@ same script.
 | `make changelog-preview` | print the CHANGELOG entry for the current version |
 | `make changelog` | prepend that entry into `CHANGELOG.md` |
 | `make tag` | create the annotated git tag `v<version>` on HEAD |
-| `make release-notes` | write `dist/bersihdisk-v<version>-notes.md` from the entry |
+| `make release-notes` | write `dist/BersihDisk-v<version>-notes.md` from the entry |
 | `make publish` | push the tag, then create/update the GitHub release from `dist/` |
 | `make install-deps` | install frontend dependencies |
 | `make doctor` | verify the toolchain (go, node, wails) |
@@ -234,7 +234,7 @@ make publish                     #   … publish what this machine built
 ```
 
 **The naming contract.** `scripts/package.sh` names files
-`bersihdisk-vX.Y.Z-<os>-<arch>[-kind].<ext>`; `internal/updater` picks the asset
+`BersihDisk-vX.Y.Z-<os>-<arch>[-kind].<ext>`; `internal/updater` picks the asset
 whose name has the OS word (`macos`/`windows`/`linux`), the architecture
 (`x86_64`; the macOS build is `universal` and matches both) and the best extension
 (`.dmg` › `.exe` › `.deb`). `TestPickAssetMatchesPackagedNames` fails if the two

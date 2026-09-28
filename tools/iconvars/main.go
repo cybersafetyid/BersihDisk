@@ -38,7 +38,7 @@ var variants = []variant{
 func main() {
 	src := flag.String("src", "assets/logo.png", "square PNG source with transparency")
 	out := flag.String("out", "frontend/src/assets/icons", "directory the variants are written to")
-	bundle := flag.String("bundle", "", "also write the 1024px edge-to-edge app icon to this path")
+	bundle := flag.String("bundle", "", "also write the 1024px opaque square app icon to this path")
 	flag.Parse()
 
 	if err := generate(*src, *out, *bundle); err != nil {
@@ -69,10 +69,10 @@ func generate(src, out, bundle string) error {
 		if err := writeBundle(base, bundle); err != nil {
 			return fmt.Errorf("write %s: %w", bundle, err)
 		}
-		fmt.Printf("✔ %s (1024x1024, edge to edge)\n", bundle)
+		fmt.Printf("✔ %s (1024x1024, opaque square)\n", bundle)
 	}
 	// Variants fill their canvas too, so the runtime Dock icon matches the bundle.
-	filled := fillCanvas(base, b.Dx())
+	filled := fillCanvas(base, b.Dx(), 0)
 	base, b = filled, filled.Bounds()
 
 	for _, v := range variants {

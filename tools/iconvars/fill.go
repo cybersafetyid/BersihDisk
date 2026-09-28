@@ -11,11 +11,17 @@ import (
 // semi-transparent margins) when measuring where the artwork really is.
 const alphaCutoff = 8 << 8
 
-// fillCanvas crops src to the bounding box of its visible pixels and scales that
-// square to size x size. An icon drawn with a transparent margin otherwise shows
-// a visible gap around it in the Dock, next to icons that run edge to edge.
-// Alpha is preserved, so the rounded corners stay transparent.
-func fillCanvas(src image.Image, size int) *image.NRGBA {
+// squareInset is how much of the artwork's side is trimmed on each edge to turn a
+// rounded tile into a full square: the tile's corner radius is about 24% of its
+// side, and its arc clears a square inset by radius x (1 - 1/sqrt 2), about 7%.
+const squareInset = 0.075
+
+// fillCanvas crops src to the bounding box of its visible pixels, trims inset (a
+// fraction of the side) off every edge, and scales the result to size x size.
+// An icon drawn with a transparent margin otherwise shows a visible gap around it
+// in the Dock, next to icons that run edge to edge. With inset 0 the alpha is
+// preserved, so rounded corners stay transparent.
+func fillCanvas(src image.Image, size int, inset float64) *image.NRGBA {
 	b := src.Bounds()
 	minX, minY, maxX, maxY := b.Max.X, b.Max.Y, b.Min.X, b.Min.Y
 	for y := b.Min.Y; y < b.Max.Y; y++ {
@@ -31,15 +37,17 @@ func fillCanvas(src image.Image, size int) *image.NRGBA {
 	}
 	// Square crop around the artwork's centre.
 	side := max(maxX-minX, maxY-minY)
-	x0 := (minX + maxX - side) / 2
-	y0 := (minY + maxY - side) / 2
+	cx, cy := float64(minX+maxX)/2, float64(minY+maxY)/2
+	crop := float64(side) * (1 - 2*inset)
+	x0 := cx - crop/2
+	y0 := cy - crop/2
 
 	out := image.NewNRGBA(image.Rect(0, 0, size, size))
-	scale := float64(side) / float64(size)
+	scale := crop / float64(size)
 	for y := 0; y < size; y++ {
 		for x := 0; x < size; x++ {
-			sx := (float64(x)+0.5)*scale - 0.5 + float64(x0)
-			sy := (float64(y)+0.5)*scale - 0.5 + float64(y0)
+			sx := (float64(x)+0.5)*scale - 0.5 + x0
+			sy := (float64(y)+0.5)*scale - 0.5 + y0
 			r, g, bl, a := bilinear(src, sx, sy)
 			if a > 0 {
 				i := out.PixOffset(x, y)
@@ -78,13 +86,19 @@ func clamp8(v float64) uint8 {
 	return uint8(math.Max(0, math.Min(255, math.Round(v))))
 }
 
-// writeBundle writes the edge-to-edge app icon (1024px, what macOS/Windows/Linux
-// bundles are built from).
+// writeBundle writes the app icon the bundles are built from: a fully opaque
+// 1024px square with no rounded corners. macOS applies its own rounded mask; an
+// icon with transparent corners is treated as a legacy icon and shown shrunk on a
+// white plate, which is exactly the white rim this avoids.
 func writeBundle(src image.Image, dst string) error {
+	icon := fillCanvas(src, 1024, squareInset)
+	for i := 3; i < len(icon.Pix); i += 4 {
+		icon.Pix[i] = 255
+	}
 	f, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	return png.Encode(f, fillCanvas(src, 1024))
+	return png.Encode(f, icon)
 }

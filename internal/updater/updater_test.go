@@ -74,22 +74,22 @@ func TestCompareVersions(t *testing.T) {
 // its installer, never another OS's file, the portable zip, or the checksum list.
 func TestPickAssetMatchesPackagedNames(t *testing.T) {
 	names := []string{
-		"bersihdisk-v1.0.0-macos-universal.dmg",
-		"bersihdisk-v1.0.0-windows-x86_64-setup.exe",
-		"bersihdisk-v1.0.0-windows-x86_64-portable.zip",
-		"bersihdisk-v1.0.0-linux-x86_64.deb",
-		"bersihdisk-v1.0.0-linux-x86_64.tar.gz",
-		"bersihdisk-v1.0.0-SHA256SUMS.txt",
+		"BersihDisk-v1.0.0-macos-universal.dmg",
+		"BersihDisk-v1.0.0-windows-x86_64-setup.exe",
+		"BersihDisk-v1.0.0-windows-x86_64-portable.zip",
+		"BersihDisk-v1.0.0-linux-x86_64.deb",
+		"BersihDisk-v1.0.0-linux-x86_64.tar.gz",
+		"BersihDisk-v1.0.0-SHA256SUMS.txt",
 	}
 	var assets []asset
 	for _, n := range names {
 		assets = append(assets, asset{Name: n})
 	}
 	cases := []struct{ goos, goarch, want string }{
-		{"darwin", "arm64", "bersihdisk-v1.0.0-macos-universal.dmg"},
-		{"darwin", "amd64", "bersihdisk-v1.0.0-macos-universal.dmg"},
-		{"windows", "amd64", "bersihdisk-v1.0.0-windows-x86_64-setup.exe"},
-		{"linux", "amd64", "bersihdisk-v1.0.0-linux-x86_64.deb"},
+		{"darwin", "arm64", "BersihDisk-v1.0.0-macos-universal.dmg"},
+		{"darwin", "amd64", "BersihDisk-v1.0.0-macos-universal.dmg"},
+		{"windows", "amd64", "BersihDisk-v1.0.0-windows-x86_64-setup.exe"},
+		{"linux", "amd64", "BersihDisk-v1.0.0-linux-x86_64.deb"},
 		{"windows", "arm64", ""}, // no arm64 build is published
 		{"linux", "arm64", ""},
 	}

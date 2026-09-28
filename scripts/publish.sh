@@ -15,13 +15,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP=bersihdisk
+TITLE=BersihDisk
 VERSION="${VERSION:-$(tr -d '[:space:]' < VERSION)}"
 REPO="${REPO:-cybersafetyid/BersihDisk}"
 TAG="${TAG:-v$VERSION}"
 DIST="${DIST:-dist}"
 GH="${GH:-gh}"
-NAME="$APP-v$VERSION"
+NAME="$TITLE-v$VERSION"
 
 PRUNE=0
 UPDATE_NOTES=0

@@ -117,13 +117,13 @@ perlu unduh ulang atau datanya hilang permanen.
 
 | OS | Berkas | Pasang |
 |---|---|---|
-| macOS (Apple Silicon + Intel) | `bersihdisk-vX.Y.Z-macos-universal.dmg` | buka `.dmg`, seret BersihDisk ke *Applications* |
-| Windows 10/11 (x64) | `bersihdisk-vX.Y.Z-windows-x86_64-setup.exe` | jalankan installer (meminta hak admin) |
-| Windows, tanpa install | `bersihdisk-vX.Y.Z-windows-x86_64-portable.zip` | ekstrak lalu jalankan `bersihdisk.exe` |
-| Linux (Debian/Ubuntu, x64) | `bersihdisk-vX.Y.Z-linux-x86_64.deb` | `sudo apt install ./bersihdisk-*.deb` |
-| Linux, distro lain | `bersihdisk-vX.Y.Z-linux-x86_64.tar.gz` | ekstrak lalu jalankan `./bersihdisk` |
+| macOS (Apple Silicon + Intel) | `BersihDisk-vX.Y.Z-macos-universal.dmg` | buka `.dmg`, seret BersihDisk ke *Applications* |
+| Windows 10/11 (x64) | `BersihDisk-vX.Y.Z-windows-x86_64-setup.exe` | jalankan installer (meminta hak admin) |
+| Windows, tanpa install | `BersihDisk-vX.Y.Z-windows-x86_64-portable.zip` | ekstrak lalu jalankan `BersihDisk.exe` |
+| Linux (Debian/Ubuntu, x64) | `BersihDisk-vX.Y.Z-linux-x86_64.deb` | `sudo apt install ./BersihDisk-*.deb` |
+| Linux, distro lain | `BersihDisk-vX.Y.Z-linux-x86_64.tar.gz` | ekstrak lalu jalankan `./BersihDisk` |
 
-`bersihdisk-vX.Y.Z-SHA256SUMS.txt` memuat checksum tiap berkas.
+`BersihDisk-vX.Y.Z-SHA256SUMS.txt` memuat checksum tiap berkas.
 
 Build **belum ditandatangani/dinotarisasi**. Di macOS berkas hasil unduhan browser
 diberi karantina: klik kanan aplikasi → *Buka* untuk pertama kali (berkas dari
@@ -177,7 +177,7 @@ Perintah harian lewat `make` (lihat `make help`):
 | `make changelog-preview` | cetak entri CHANGELOG untuk versi saat ini |
 | `make changelog` | sisipkan entri itu ke `CHANGELOG.md` |
 | `make tag` | buat git tag anotasi `v<versi>` pada HEAD |
-| `make release-notes` | tulis `dist/bersihdisk-v<versi>-notes.md` dari entri |
+| `make release-notes` | tulis `dist/BersihDisk-v<versi>-notes.md` dari entri |
 | `make publish` | dorong tag, lalu buat/perbarui release GitHub dari `dist/` |
 | `make install-deps` / `make doctor` | pasang dependensi frontend / cek toolchain |
 | `make install-wails-fix` | build CLI wails yang kompatibel Go ≥ 1.24 |
@@ -204,7 +204,7 @@ membuat release atau memperbaruinya di tempat dan menghapus asset usang).
 Workflow hanya memanggil skrip repo ini, jadi hasil lokal identik.
 
 **Kontrak penamaan.** `scripts/package.sh` menamai berkas
-`bersihdisk-vX.Y.Z-<os>-<arsitektur>[-jenis].<ext>`; `internal/updater` memilih
+`BersihDisk-vX.Y.Z-<os>-<arsitektur>[-jenis].<ext>`; `internal/updater` memilih
 asset dengan kata OS (`macos`/`windows`/`linux`), arsitektur (`x86_64`; build
 macOS `universal` cocok untuk keduanya) dan ekstensi terbaik (`.dmg` › `.exe` ›
 `.deb`). `TestPickAssetMatchesPackagedNames` gagal bila keduanya tidak sinkron.

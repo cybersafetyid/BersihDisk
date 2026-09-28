@@ -6,11 +6,11 @@
 # by identical steps. Wails cannot cross-compile a cgo app, so each OS packages
 # itself; CI runs this once per OS.
 #
-#   macOS    dist/bersihdisk-vX.Y.Z-macos-universal.dmg
-#   Windows  dist/bersihdisk-vX.Y.Z-windows-x86_64-setup.exe   (NSIS installer)
-#            dist/bersihdisk-vX.Y.Z-windows-x86_64-portable.zip
-#   Linux    dist/bersihdisk-vX.Y.Z-linux-x86_64.deb
-#            dist/bersihdisk-vX.Y.Z-linux-x86_64.tar.gz
+#   macOS    dist/BersihDisk-vX.Y.Z-macos-universal.dmg
+#   Windows  dist/BersihDisk-vX.Y.Z-windows-x86_64-setup.exe   (NSIS installer)
+#            dist/BersihDisk-vX.Y.Z-windows-x86_64-portable.zip
+#   Linux    dist/BersihDisk-vX.Y.Z-linux-x86_64.deb
+#            dist/BersihDisk-vX.Y.Z-linux-x86_64.tar.gz
 #
 # The names are a contract with internal/updater (pickAsset): the OS word, the
 # architecture and the extension decide which file the in-app updater downloads.
@@ -23,13 +23,14 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP=bersihdisk
+APP=bersihdisk    # lowercase only where Debian requires it: the .deb package id and icon name
 TITLE=BersihDisk
+BIN=BersihDisk    # what Wails builds (wails.json "name" + "outputfilename"): BersihDisk.app / .exe
 VERSION="${VERSION:-$(tr -d '[:space:]' < VERSION)}"
 REPO="${REPO:-cybersafetyid/BersihDisk}"
 DIST="${DIST:-dist}"
 LDFLAGS="-X main.appVersion=$VERSION -X main.releaseRepo=$REPO"
-NAME="$APP-v$VERSION"
+NAME="$TITLE-v$VERSION" # artifact prefix: BersihDisk-vX.Y.Z
 
 SKIP_BUILD=0
 [ "${1:-}" = "--skip-build" ] && SKIP_BUILD=1
@@ -80,7 +81,7 @@ echo "▶ Packaging $TITLE v$VERSION for $OS ($($WAILS_BIN version 2>/dev/null |
 # ---- macOS: universal .app -> .dmg -------------------------------------------
 
 package_macos() {
-	local app="build/bin/$APP.app" out="$DIST/$NAME-macos-universal.dmg"
+	local app="build/bin/$BIN.app" out="$DIST/$NAME-macos-universal.dmg"
 	if [ "$SKIP_BUILD" -eq 0 ]; then
 		"$WAILS_BIN" build -platform darwin/universal -ldflags "$LDFLAGS" -m -clean
 	fi
@@ -111,14 +112,14 @@ package_windows() {
 		# The trash library is cgo, so the Windows build needs a C compiler (mingw-w64).
 		CGO_ENABLED=1 "$WAILS_BIN" build -platform windows/amd64 -ldflags "$LDFLAGS" -m -nsis -clean
 	fi
-	[ -f "build/bin/$APP.exe" ] || die "build/bin/$APP.exe missing — the build failed"
-	[ -f "build/bin/$APP-amd64-installer.exe" ] || die "NSIS installer missing — is makensis installed?"
+	[ -f "build/bin/$BIN.exe" ] || die "build/bin/$BIN.exe missing — the build failed"
+	[ -f "build/bin/$BIN-amd64-installer.exe" ] || die "NSIS installer missing — is makensis installed?"
 
-	cp "build/bin/$APP-amd64-installer.exe" "$setup"
+	cp "build/bin/$BIN-amd64-installer.exe" "$setup"
 	local stage
 	stage="$(mktemp -d)"
 	mkdir "$stage/$NAME"
-	cp "build/bin/$APP.exe" "$stage/$NAME/"
+	cp "build/bin/$BIN.exe" "$stage/$NAME/"
 	cp LICENSE "$stage/$NAME/"
 	zip_dir "$stage/$NAME" "$portable"
 	rm -rf "$stage"
@@ -135,28 +136,31 @@ package_linux() {
 		# (4.0 was dropped from Ubuntu 24.04).
 		"$WAILS_BIN" build -platform linux/amd64 -tags webkit2_41 -ldflags "$LDFLAGS" -m -clean
 	fi
-	[ -f "build/bin/$APP" ] || die "build/bin/$APP missing — the build failed"
+	[ -f "build/bin/$BIN" ] || die "build/bin/$BIN missing — the build failed"
 
 	local stage
 	stage="$(mktemp -d)"
 
 	# tar.gz: the bare binary plus licence, for distros without dpkg.
 	mkdir "$stage/$NAME-linux-x86_64"
-	cp "build/bin/$APP" LICENSE "$stage/$NAME-linux-x86_64/"
+	cp "build/bin/$BIN" "$stage/$NAME-linux-x86_64/$BIN"
+	cp LICENSE "$stage/$NAME-linux-x86_64/"
 	tar -czf "$tgz" -C "$stage" "$NAME-linux-x86_64"
 
 	# .deb
 	command -v dpkg-deb >/dev/null 2>&1 || { echo "⚠ dpkg-deb not found — skipped the .deb (tar.gz only)"; rm -rf "$stage"; echo "✔ $tgz"; return; }
 	local root="$stage/deb"
-	install -Dm755 "build/bin/$APP" "$root/usr/bin/$APP"
-	install -Dm644 build/appicon.png "$root/usr/share/pixmaps/$APP.png"
+	install -Dm755 "build/bin/$BIN" "$root/usr/bin/$BIN"
+	# The rounded logo, not build/appicon.png (an opaque square made for macOS).
+	install -Dm644 assets/logo.png "$root/usr/share/pixmaps/$APP.png"
 	install -Dm644 /dev/stdin "$root/usr/share/applications/$APP.desktop" <<DESKTOP
 [Desktop Entry]
 Type=Application
 Name=$TITLE
 Comment=Disk cleaner for developers
-Exec=/usr/bin/$APP
+Exec=/usr/bin/$BIN
 Icon=$APP
+StartupWMClass=$BIN
 Terminal=false
 Categories=Utility;System;
 DESKTOP
@@ -177,7 +181,7 @@ Description: Disk cleaner for developers
  DerivedData, ...) and removes them to the trash or permanently.
 CONTROL
 	rm -f "$deb"
-	dpkg-deb --root-owner-group --build "$root" "$deb" >/dev/null
+	dpkg-deb -Zxz --root-owner-group --build "$root" "$deb" >/dev/null
 	rm -rf "$stage"
 	echo "✔ $deb"
 	echo "✔ $tgz"

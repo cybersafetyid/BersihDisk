@@ -83,9 +83,9 @@ ICON_VARIANTS := frontend/src/assets/icons
 run: build
 	@echo "▶ Launching $(APP_TITLE) v$(VERSION)..."
 	@if [ "$(shell uname)" = "Darwin" ]; then \
-		open build/bin/$(APP_NAME).app; \
+		open build/bin/$(APP_TITLE).app; \
 	else \
-		./build/bin/$(APP_NAME); \
+		./build/bin/$(APP_TITLE); \
 	fi
 
 ## dev: live-reload development (wails dev)
@@ -111,7 +111,7 @@ build:
 build-darwin:
 	@echo "▶ Building macOS universal..."
 	$(WAILS) build -platform darwin/universal -ldflags "$(LDFLAGS)" -m
-	@echo "✔ Built: build/bin/$(APP_NAME).app"
+	@echo "✔ Built: build/bin/$(APP_TITLE).app"
 
 ## build-windows: Windows amd64 (requires CGO + mingw-w64 for the trash lib)
 build-windows:
@@ -261,8 +261,8 @@ tag:
 release-notes:
 	@mkdir -p $(DIST_DIR)
 	@{ printf '# $(APP_TITLE) v%s\n\n' "$(VERSION)"; $(CHANGELOG_SH) --notes $(VERSION); } \
-		> $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-notes.md
-	@echo "✔ Notes: $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-notes.md"
+		> $(DIST_DIR)/$(APP_TITLE)-v$(VERSION)-notes.md
+	@echo "✔ Notes: $(DIST_DIR)/$(APP_TITLE)-v$(VERSION)-notes.md"
 
 ## publish: push the tag, then create/update the GitHub release from dist/ (PUBLISH_FLAGS=--prune --update-notes)
 publish: release-notes

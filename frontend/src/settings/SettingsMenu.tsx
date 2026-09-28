@@ -10,11 +10,25 @@ interface Props {
   onOpen: (section: Section) => void;
 }
 
+/** Keep in step with the .settings-dropdown.closing animation in settings.css. */
+const EXIT_MS = 140;
+
 export function SettingsMenu({ iconSupported, onOpen }: Props) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
+  // The dropdown stays mounted while its exit animation plays, then unmounts.
+  const [mounted, setMounted] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const items = visibleSections(iconSupported);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      return;
+    }
+    const id = window.setTimeout(() => setMounted(false), EXIT_MS);
+    return () => window.clearTimeout(id);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -43,10 +57,10 @@ export function SettingsMenu({ iconSupported, onOpen }: Props) {
         <span className="theme-label">{t("settings.entry")}</span>
       </button>
 
-      {open && (
-        <div className="settings-dropdown" role="menu">
+      {mounted && (
+        <div className={`settings-dropdown ${open ? "" : "closing"}`} role="menu">
           {items.map((s, i) => (
-            <div key={s.key}>
+            <div key={s.key} className="menu-row" style={{ "--i": i } as React.CSSProperties}>
               {i > 0 && items[i - 1].group !== s.group && <div className="menu-sep" />}
               <button
                 role="menuitem"
