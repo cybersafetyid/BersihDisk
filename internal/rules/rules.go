@@ -2,9 +2,12 @@
 package rules
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"bersihdisk/internal/safety"
 )
 
 // Category IDs.
@@ -63,11 +66,34 @@ const (
 	IconEmulators = "monitor"
 )
 
+// Hint raises the risk of items whose path ends with Suffix ("/" separators,
+// case-insensitive). Reason is a code the frontend translates.
+type Hint struct {
+	Suffix string
+	Level  safety.Level
+	Reason string
+}
+
 // Rule defines one cleanup category.
 type Rule struct {
 	ID    string // Unique category ID
 	Icon  string // Icon key for the frontend
 	OptIn bool   // true = unchecked by default (e.g. AI cache)
+
+	// Risk is the level of the whole category (empty = safe); hints raise single
+	// locations above it. Non-safe categories need a categories.<id>.risk text in
+	// the locales.
+	Risk  safety.Level
+	hints []Hint
+	// markers = per-directory-name files that must sit beside a matched directory
+	// to prove it belongs to a real project (key: lowercased last name segment;
+	// "*.ext" matches by suffix). Without one the item is flagged, not dropped.
+	markers map[string][]string
+	// KeepRoot = the folder is a container other software expects to exist (Temp,
+	// ~/.cache): deletion empties it instead of removing it.
+	KeepRoot bool
+	// homeSkip = base names a "*" home path must not expand to.
+	homeSkip []string
 
 	// dirNames = directory patterns searched inside projects (e.g. "node_modules").
 	// A pattern may hold more than one segment ("app/build"), matched against the
@@ -120,6 +146,112 @@ func (r Rule) MatchDir(name string, depth int, entries []string) bool {
 // ContentFilterFor returns the content filter for a directory name (may be nil).
 func (r Rule) ContentFilterFor(name string) func(entries []string) bool {
 	return r.contentFilters[strings.ToLower(name)]
+}
+
+// RiskLevel is the worst level the category can produce, for the category picker.
+func (r Rule) RiskLevel() safety.Level {
+	worst := safety.Safe
+	if r.Risk != "" {
+		worst = r.Risk
+	}
+	for _, h := range r.hints {
+		worst = safety.Worse(worst, h.Level)
+	}
+	return worst
+}
+
+// Assess grades one found path: the guard and context checks first, then the
+// category level, hints for specific locations, and the project-marker check.
+func (r Rule) Assess(path string) safety.Assessment {
+	a := safety.Assess(path, r.Risk, "categoryNote")
+	if a.Level == safety.Blocked {
+		return a
+	}
+	slash := strings.ToLower(filepath.ToSlash(path))
+	for _, h := range r.hints {
+		if strings.HasSuffix(slash, strings.ToLower(h.Suffix)) {
+			a.Add(h.Level, h.Reason)
+		}
+	}
+	if m := r.markers[strings.ToLower(filepath.Base(path))]; len(m) > 0 {
+		if !safety.HasAnySibling(filepath.Dir(path), m) {
+			a.Add(safety.Caution, "noProjectFile")
+		}
+	}
+	return a
+}
+
+// ExpandHome returns the absolute locations of the rule's home paths on this OS,
+// with "*" segments expanded and homeSkip names removed. A path that does not
+// exist is still returned; the caller decides what to do with it.
+func (r Rule) ExpandHome(home string) []string {
+	var out []string
+	seen := map[string]bool{}
+	add := func(p string) {
+		if !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
+	for _, hp := range r.HomePaths() {
+		// Linux tools follow $XDG_*_HOME when the user moved those folders, so a
+		// default-location entry also gets its relocated twin.
+		for _, alt := range xdgTwins(hp) {
+			if !strings.Contains(alt, "*") {
+				add(HomeRelToAbs(home, alt))
+			}
+		}
+		abs := HomeRelToAbs(home, hp)
+		if !strings.Contains(hp, "*") {
+			add(abs)
+			continue
+		}
+		matches, _ := filepath.Glob(abs)
+		for _, m := range matches {
+			if !r.skipsHome(filepath.Base(m)) {
+				add(m)
+			}
+		}
+	}
+	return out
+}
+
+// xdgBases maps a default home-relative base to the variable that relocates it.
+var xdgBases = []struct{ rel, env string }{
+	{".cache/", "XDG_CACHE_HOME"},
+	{".local/share/", "XDG_DATA_HOME"},
+	{".config/", "XDG_CONFIG_HOME"},
+}
+
+// xdgTwins returns hp re-based under the XDG variable that governs it, when that
+// variable is set to an absolute path. The result is an absolute path, which
+// HomeRelToAbs would join to home, so it is returned relative to nothing: callers
+// use filepath.IsAbs to tell.
+func xdgTwins(hp string) []string {
+	for _, b := range xdgBases {
+		root := strings.TrimSuffix(b.rel, "/")
+		if hp != root && !strings.HasPrefix(hp, b.rel) {
+			continue
+		}
+		base := os.Getenv(b.env)
+		if base == "" || !filepath.IsAbs(base) {
+			return nil
+		}
+		if hp == root {
+			return []string{filepath.ToSlash(base)}
+		}
+		return []string{filepath.ToSlash(base) + "/" + strings.TrimPrefix(hp, b.rel)}
+	}
+	return nil
+}
+
+func (r Rule) skipsHome(name string) bool {
+	for _, s := range r.homeSkip {
+		if strings.EqualFold(s, name) {
+			return true
+		}
+	}
+	return false
 }
 
 // HomePaths returns home-relative paths valid on the current OS.
@@ -248,6 +380,26 @@ func swiftPMFilter(entries []string) bool {
 	return false
 }
 
+// coverageFilter: a "coverage" folder counts only when it holds a coverage
+// report — the name alone is too generic.
+func coverageFilter(entries []string) bool {
+	for _, e := range entries {
+		switch strings.ToLower(e) {
+		case "lcov.info", "lcov-report", "coverage-final.json", "clover.xml",
+			"cobertura-coverage.xml", "coverage.json", "index.html":
+			return true
+		}
+	}
+	return false
+}
+
+// Files that prove a matched directory sits in a real project.
+var (
+	jsProject     = []string{"package.json"}
+	gradleProject = []string{"build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts"}
+	dotnetProject = []string{"*.csproj", "*.fsproj", "*.vbproj", "*.sln"}
+)
+
 // All returns every category rule.
 func All() []Rule {
 	return []Rule{
@@ -256,6 +408,7 @@ func All() []Rule {
 			Icon:     IconNodeJS,
 			dirNames: []string{"node_modules"},
 			maxDepth: 5,
+			markers:  map[string][]string{"node_modules": jsProject},
 		},
 		{
 			ID:   CatGo,
@@ -265,6 +418,7 @@ func All() []Rule {
 				"go/pkg/mod/cache/download",
 				"unix:.cache/go-build",
 				"unix:Library/Caches/go-build",
+				"win:AppData/Local/go-build",
 			},
 		},
 		{
@@ -273,7 +427,9 @@ func All() []Rule {
 			dirNames:       []string{"target"},
 			maxDepth:       4,
 			contentFilters: map[string]func([]string) bool{"target": rustTargetFilter},
-			homePaths:      []string{"unix:.cargo/registry", "win:AppData/Local/Cargo/registry"},
+			markers:        map[string][]string{"target": {"Cargo.toml"}},
+			// CARGO_HOME defaults to ~/.cargo on every OS, %USERPROFILE%\.cargo on Windows.
+			homePaths: []string{".cargo/registry"},
 		},
 		{
 			ID:             CatGradle,
@@ -281,6 +437,7 @@ func All() []Rule {
 			dirNames:       []string{"build"},
 			maxDepth:       4,
 			contentFilters: map[string]func([]string) bool{"build": buildFilter},
+			markers:        map[string][]string{"build": gradleProject},
 			homePaths:      []string{"unix:.gradle/caches", "win:.gradle/caches"},
 		},
 		{
@@ -290,12 +447,20 @@ func All() []Rule {
 			dirNames:       []string{"target"},
 			maxDepth:       4,
 			contentFilters: map[string]func([]string) bool{"target": mavenTargetFilter},
+			markers:        map[string][]string{"target": {"pom.xml"}},
+			// Artifacts put there by `mvn install` exist nowhere else.
+			hints: []Hint{{".m2/repository", safety.Caution, "localArtifacts"}},
 		},
 		{
 			ID:       CatCpp,
 			Icon:     IconCpp,
 			dirNames: []string{"CMakeFiles", "cmake-build-debug", "cmake-build-release"},
 			maxDepth: 4,
+			markers: map[string][]string{
+				"cmakefiles":          {"CMakeCache.txt"},
+				"cmake-build-debug":   {"CMakeLists.txt"},
+				"cmake-build-release": {"CMakeLists.txt"},
+			},
 		},
 		{
 			ID:             CatPython,
@@ -303,6 +468,8 @@ func All() []Rule {
 			dirNames:       []string{"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".venv", "venv"},
 			maxDepth:       5,
 			contentFilters: map[string]func([]string) bool{".venv": venvFilter, "venv": venvFilter},
+			// A virtualenv can hold packages that were never written to a requirements file.
+			hints: []Hint{{"/.venv", safety.Caution, "virtualenv"}, {"/venv", safety.Caution, "virtualenv"}},
 		},
 		{
 			ID:             CatDotnet,
@@ -310,6 +477,7 @@ func All() []Rule {
 			dirNames:       []string{"bin", "obj"},
 			maxDepth:       4,
 			contentFilters: map[string]func([]string) bool{"bin": dotnetFilter, "obj": dotnetFilter},
+			markers:        map[string][]string{"bin": dotnetProject, "obj": dotnetProject},
 		},
 		{
 			ID:   CatXcode,
@@ -323,6 +491,7 @@ func All() []Rule {
 			dirNames:       []string{".build"},
 			maxDepth:       3,
 			contentFilters: map[string]func([]string) bool{".build": swiftPMFilter},
+			markers:        map[string][]string{".build": {"Package.swift"}},
 		},
 		{
 			ID:        CatAndroid,
@@ -330,17 +499,21 @@ func All() []Rule {
 			homePaths: []string{"unix:.android/build-cache", "win:.android/build-cache"},
 			dirNames:  []string{"app/build", ".cxx"},
 			maxDepth:  4,
+			markers:   map[string][]string{"build": gradleProject},
 		},
 		{
 			ID:        CatTemp,
 			Icon:      IconTemp,
 			OptIn:     true,
+			Risk:      safety.Caution, // running apps keep live files here
+			KeepRoot:  true,
 			homePaths: []string{".cache", "win:AppData/Local/Temp", "win:AppData/Local/CrashDumps", "win:AppData/Local/Microsoft/Windows/INetCache"},
 		},
 		{
 			ID:    CatAICache,
 			Icon:  IconAICache,
 			OptIn: true,
+			Risk:  safety.Caution, // multi-gigabyte downloads; custom Ollama models cannot be re-pulled
 			homePaths: []string{
 				".cache/huggingface",
 				".cache/torch",
@@ -349,21 +522,26 @@ func All() []Rule {
 				".cache/modelscope",
 				"unix:.ollama/models",
 				"win:.ollama/models",
-				"win:AppData/Local/pip/cache",
 			},
 		},
 		{
 			ID:    CatElectron,
 			Icon:  IconElectron,
 			OptIn: true,
+			Risk:  safety.Caution,
 			homePaths: []string{
 				"unix:Library/Caches/electron",
 				"win:AppData/Local/electron/Cache",
 				".npm/_cacache",
 				".npm/_npx",
+				"win:AppData/Local/npm-cache", // npm's cache default on Windows
 				".cache/yarn",
+				"unix:Library/Caches/Yarn",
+				"win:AppData/Local/Yarn/Cache",
+				".yarn/berry/cache",
 				".cache/pnpm",
 				"unix:.local/share/pnpm/store",
+				"unix:Library/pnpm/store",
 				"win:AppData/Local/pnpm/store",
 				"unix:Library/Caches/ms-playwright",
 				".cache/ms-playwright",
@@ -378,8 +556,12 @@ func All() []Rule {
 				"unix:.docker/buildx",
 				"unix:Library/Caches/com.docker.docker",
 				"unix:Library/Containers/com.docker.docker/Data/log",
-				"win:AppData/Local/Docker",
+				// Not the whole AppData/Local/Docker: its wsl/ folder holds the disk
+				// image with every image, container and volume.
+				"win:AppData/Local/Docker/log",
 			},
+			// buildx keeps the definitions of custom builders next to its cache.
+			hints: []Hint{{".docker/buildx", safety.Caution, "builderConfig"}},
 		},
 		{
 			ID:   CatBrew,
@@ -404,6 +586,9 @@ func All() []Rule {
 			homePaths: []string{
 				".cache/pip",
 				"unix:Library/Caches/pip",
+				"win:AppData/Local/pip/Cache",
+				"win:AppData/Local/uv/cache",
+				"win:AppData/Local/pypoetry/Cache",
 				".cache/uv",
 				"unix:Library/Caches/uv",
 				".local/share/uv/cache",
@@ -416,6 +601,9 @@ func All() []Rule {
 			ID:    CatRuby,
 			Icon:  IconRuby,
 			OptIn: true,
+			Risk:  safety.Caution,
+			// ~/.gem holds the gems installed with --user-install: not a cache.
+			hints: []Hint{{"/.gem", safety.Danger, "installedPackages"}},
 			homePaths: []string{
 				"unix:Library/Caches/Gem",
 				"unix:.gem",
@@ -427,6 +615,9 @@ func All() []Rule {
 			Icon:     IconFlutter,
 			dirNames: []string{".dart_tool"},
 			maxDepth: 4,
+			markers:  map[string][]string{".dart_tool": {"pubspec.yaml"}},
+			// Tools activated with `dart pub global activate` live under .pub-cache.
+			hints: []Hint{{".pub-cache/hosted", safety.Caution, "globalTools"}},
 			homePaths: []string{
 				".pub-cache/hosted",
 				"unix:Library/Caches/flutter_engine",
@@ -438,6 +629,7 @@ func All() []Rule {
 			Icon:     IconTerraform,
 			dirNames: []string{".terraform"},
 			maxDepth: 4,
+			markers:  map[string][]string{".terraform": {"*.tf", "*.tf.json"}},
 			homePaths: []string{
 				".terraform.d/plugin-cache",
 				"unix:.cache/tf-plugin-fetch",
@@ -458,20 +650,34 @@ func All() []Rule {
 			Icon: IconJetBrains,
 			homePaths: []string{
 				"unix:Library/Caches/JetBrains",
-				"win:AppData/Local/JetBrains",
+				// One folder per IDE — never the parent: Toolbox keeps the installed IDEs there.
+				"win:AppData/Local/JetBrains/*",
 				".cache/JetBrains",
 			},
+			homeSkip: []string{"Toolbox"},
 		},
 		{
-			ID:       CatWebBuild,
-			Icon:     IconWebBuild,
-			dirNames: []string{".next", ".nuxt", ".turbo", ".vite", ".parcel-cache", ".svelte-kit", ".astro", "coverage", "storybook-static", "docusaurus-plugin-debug"},
-			maxDepth: 4,
+			ID:             CatWebBuild,
+			Icon:           IconWebBuild,
+			dirNames:       []string{".next", ".nuxt", ".turbo", ".vite", ".parcel-cache", ".svelte-kit", ".astro", "coverage", "storybook-static", "docusaurus-plugin-debug"},
+			maxDepth:       4,
+			contentFilters: map[string]func([]string) bool{"coverage": coverageFilter},
+			markers: map[string][]string{
+				".next": jsProject, ".nuxt": jsProject, ".turbo": jsProject, ".vite": jsProject,
+				".parcel-cache": jsProject, ".svelte-kit": jsProject, ".astro": jsProject,
+				"storybook-static": jsProject, "docusaurus-plugin-debug": jsProject,
+			},
 		},
 		{
 			ID:    CatEmulators,
 			Icon:  IconEmulators,
 			OptIn: true,
+			Risk:  safety.Caution,
+			// Virtual devices carry installed apps and user data; only the dyld cache regenerates.
+			hints: []Hint{
+				{".android/avd", safety.Danger, "emulatorData"},
+				{"Library/Developer/CoreSimulator/Devices", safety.Danger, "emulatorData"},
+			},
 			homePaths: []string{
 				".android/avd",
 				"unix:Library/Developer/CoreSimulator/Devices",
@@ -494,5 +700,8 @@ func ByID(id string) *Rule {
 
 // HomeRelToAbs converts a home-relative path ("/" separators) to absolute.
 func HomeRelToAbs(homeDir, rel string) string {
+	if filepath.IsAbs(filepath.FromSlash(rel)) {
+		return filepath.Clean(filepath.FromSlash(rel)) // an XDG-relocated location
+	}
 	return filepath.Join(homeDir, filepath.FromSlash(rel))
 }

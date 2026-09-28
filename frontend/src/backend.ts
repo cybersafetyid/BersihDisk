@@ -5,6 +5,7 @@ import { EventsOn } from "../wailsjs/runtime/runtime";
 import type {
   DriveUI, CategoryUI, ScanResult, ScanProgress, DeleteProgress, DeleteResult,
   FolderEntry, UpdateInfo, UpdateProgress, UpdateResult, MachineInfo, AppInstallInfo, CacheReport,
+  PackageList, UninstallPlan, UninstallProgress, UninstallResult,
 } from "./lib/types";
 
 const B = BackendRaw as any;
@@ -14,7 +15,7 @@ export const listCategories = (): Promise<CategoryUI[]> => B.ListCategories();
 export const startScan = (req: { roots: string[]; categories: string[] }): Promise<string> =>
   B.StartScan(req);
 export const cancelScan = (): Promise<void> => B.CancelScan();
-export const startDelete = (req: { paths: string[]; sizes: number[]; mode: string }): Promise<string> =>
+export const startDelete = (req: { paths: string[]; sizes: number[]; mode: string; acknowledged: boolean }): Promise<string> =>
   B.StartDelete(req);
 export const cancelDelete = (): Promise<void> => B.CancelDelete();
 export const appInfo = (): Promise<Record<string, unknown>> => B.AppInfo();
@@ -23,6 +24,15 @@ export const appInfo = (): Promise<Record<string, unknown>> => B.AppInfo();
 export const listFolder = (path: string): Promise<FolderEntry[]> => B.ListFolder(path);
 export const measurePaths = (paths: string[]): Promise<number[]> => B.MeasurePaths(paths);
 export const reveal = (path: string): Promise<void> => B.Reveal(path);
+
+// Uninstaller: list what is installed, review a plan, run the chosen steps.
+export const listPackages = (): Promise<PackageList> => B.ListPackages();
+export const planUninstall = (packageId: string): Promise<UninstallPlan> => B.PlanUninstall(packageId);
+export const startUninstall = (req: { planId: string; steps: string[]; mode: string; acknowledged: boolean }): Promise<string> =>
+  B.StartUninstall(req);
+/** The application's own icon as a data URL; "" when it has none to show. */
+export const appIcon = (packageId: string): Promise<string> => B.AppIcon(packageId);
+export const cancelUninstall = (): Promise<void> => B.CancelUninstall();
 
 // In-app updates from GitHub Releases.
 export const checkUpdate = (): Promise<UpdateInfo> => B.CheckUpdate();
@@ -58,4 +68,10 @@ export function onUpdateProgress(cb: (p: UpdateProgress) => void) {
 }
 export function onUpdateFinished(cb: (r: UpdateResult) => void) {
   return EventsOn("update:finished", cb);
+}
+export function onUninstallProgress(cb: (p: UninstallProgress) => void) {
+  return EventsOn("uninstall:progress", cb);
+}
+export function onUninstallFinished(cb: (r: UninstallResult) => void) {
+  return EventsOn("uninstall:finished", cb);
 }

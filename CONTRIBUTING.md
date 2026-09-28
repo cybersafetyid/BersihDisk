@@ -69,10 +69,12 @@ Everything is driven by `make` (run `make help` for the full list).
 ```
 main.go / app.go        window bootstrap + the Wails bindings the UI calls
 internal/
-  rules/                category definitions and path matchers (unit tested)
+  safety/               risk levels, the hard delete guard, context checks
+  rules/                category definitions, path matchers, risk hints, markers
   drive/                per-platform drive detection (darwin / windows / linux)
-  scanner/              two-phase concurrent scan + progress events
-  deleter/              bulk delete via trash or permanent removal
+  scanner/              two-phase concurrent scan, risk grading, progress events
+  deleter/              bulk delete via trash or permanent removal (guarded)
+  uninstall/            providers, toolchain catalog, plans, execution
   browser/              folder listing with per-child sizes
   reveal/               OS handoff (Finder / Explorer, launching installers)
   updater/              GitHub Releases check + download + sha256 verify
@@ -80,7 +82,7 @@ internal/
 frontend/src/
   App.tsx               main flow
   backend.ts            Wails binding + event wrapper
-  categories/ drives/ scan/ results/ update/ common/
+  categories/ drives/ scan/ results/ uninstall/ update/ common/
   hooks/                useTheme, useAppliedSettings
   i18n/locales/         id.ts and en.ts translation catalogs
   lib/                  types, formatting, icon curation, settings
@@ -97,7 +99,14 @@ build/                  platform manifests, icons, installer scripts
   shape, and the `Dictionary` type makes TypeScript reject a missing or extra
   key, so add to both files in the same commit.
 - Category names, descriptions, and risk notes are keyed by category ID:
-  `categories.<id>.name`, `.desc`, `.risk`.
+  `categories.<id>.name`, `.desc`, `.risk`. Reason codes the backend emits are
+  keyed under `safety.reason.<code>`, uninstall warnings under
+  `uninstall.warn.<code>`. The backend sends **codes, never prose**.
+- **Reuse before you copy.** Warnings use `RiskBadge` / `RiskAck`, the Trash vs
+  Permanent choice is `ModePicker`, manual commands are `CopyCommand`, and
+  path/level maths live in `lib/paths.ts` / `lib/risk.ts`. In Go, every deletion
+  goes through `deleter`, every "may this go?" question through `safety`, and
+  every path spec through `uninstall.Env.Expand`.
 - Comments are for *why*, not *what*: a hidden constraint, an invariant, a
   workaround. Most functions need none.
 - `gofmt` output is authoritative; `make check` fails on unformatted files.
@@ -110,23 +119,66 @@ category with missing copy:
 
 1. **Rule** — `internal/rules/rules.go`: add the `Cat…` ID and `Icon…` name, then
    append a `Rule` with its `dirNames` (directory patterns, multi-segment allowed),
-   `homePaths` (home-relative, `win:` / `unix:` prefixes for per-OS entries),
-   `contentFilters` (per-name content check) and `maxDepth`. Generic directory
-   names (`build`, `target`, `bin`, `obj`) **must** carry a content filter so
-   source code is never matched.
+   `homePaths` (home-relative, `win:` / `unix:` prefixes for per-OS entries, `*`
+   globs with `homeSkip` for names to leave out), `contentFilters` (per-name
+   content check) and `maxDepth`. Generic directory names (`build`, `target`,
+   `bin`, `obj`) **must** carry a content filter so source code is never matched.
+   Then grade it (see section 7): `markers` (a project file that must sit
+   beside the match), `hints` (locations riskier than the category), `Risk` (the
+   whole category), `KeepRoot` (a container that must survive).
 2. **Tests** — `internal/rules/rules_test.go`: assert the matcher hits real
-   artifact paths and rejects look-alikes.
+   artifact paths and rejects look-alikes, and that risky locations get the
+   grade you gave them.
 3. **Frontend metadata** — `frontend/src/lib/types.ts` (`CategoryUI`) and the
    category list the backend exposes; set `optIn: true` whenever deleting the
    data costs a re-download or is unrecoverable.
-4. **Copy + icon** — add `categories.<id>.*` to both locale catalogs, and map
+4. **Copy + icon** — add `categories.<id>.*` to both locale catalogs (a
+   `risk` text is required when the category or any hint is above safe), and map
    the icon in `frontend/src/lib/brandIcons.ts` (simple-icons) or use a Lucide
    name.
 
 Default state for a new category is **off**. Opt-in categories stay unchecked
 because the user should decide to pay a re-download.
 
-### 7. Safety rules for deletions
+### 7. Grading risk
+
+Every result gets a level from `internal/safety`: **safe** (regenerated
+automatically), **caution** (a re-download, or may hold something unique),
+**danger** (can break an installed app/tool or destroy data) and **blocked**
+(never deleted). Ask of any new location: *if the user deletes this and it is
+not junk, what breaks?*
+
+- Whole folders that might not be a cache (`~/.gem`, `.android/avd`,
+  `.m2/repository`) get a `Hint` with a reason code.
+- Look for the *parent* of a Windows/macOS path too: `%LOCALAPPDATA%\Docker`
+  contains the WSL disk image and `JetBrains` contains Toolbox — target the
+  subfolder that really is a cache.
+- A new reason code needs `safety.reason.<code>` in **both** locale catalogs.
+- A new protected location goes in `safety.protectedSets`; it needs a case in
+  `safety_test.go`.
+
+### 8. Adding to the uninstaller
+
+- **A developer tool** (version manager, SDK, script-installed CLI): add one
+  entry to `tools()` in `internal/uninstall/catalog.go` — `detect` paths, the
+  tool's `native` uninstall command if it has one, `paths` (`exact(...)` for
+  folders the tool owns, `config(...)` / `userData(...)` for anything that may
+  hold the user's own files, `admin(...)` when root is required), and the shell
+  `profile` lines it wrote. `TestCatalogIsSound` rejects a residue outside home
+  and the broad folders that hold source or settings (`~/go`, `~/.m2`).
+- **A package manager**: add a `cliSpec` in `internal/uninstall/cli.go` (the
+  list command, a pure `parse` function, the remove arguments, protected names)
+  and test the parser against real tool output.
+- **Applications on another OS**: implement `Provider` (see `apps.go`); keep OS
+  specific calls behind `Env.OS` so the tests run on every CI platform.
+- Path specs (`~/…`, `{APPDATA}/…`, `mac:` / `win:` / `linux:` / `unix:`
+  prefixes, `*`) are expanded by `Env.Expand`. Residue found through a stable
+  identifier is `Exact`; name-based guesses carry `Reason: "nameMatch"` and start
+  unticked.
+- Never add a step that elevates privileges. Show the command instead
+  (`NeedsAdmin`).
+
+### 9. Safety rules for deletions
 
 Non-negotiable, and a common reason a PR is asked for changes:
 
@@ -138,9 +190,15 @@ Non-negotiable, and a common reason a PR is asked for changes:
 - Never follow symlinks into a target the user did not select, and never cross
   a mount point during the walk.
 - Anything that can lose user data (emulator images, AI model weights, browser
-  profiles) is opt-in and shows a risk note.
+  profiles) is opt-in, shows a risk note, and is graded caution or danger.
+- The frontend is never trusted: the backend re-derives the grade of every path
+  (`App.vetDelete`) and the uninstaller runs only steps of a plan it stored.
+- Every deletion passes `safety.Guard`; do not add a code path around
+  `deleter`.
+- Anything that edits a user's file (shell profiles, PATH, registry) backs it up
+  first and removes only lines matching exactly what the installer wrote.
 
-### 8. Pull request workflow
+### 10. Pull request workflow
 
 ```bash
 git checkout -b feat/your-topic      # branch from main
@@ -156,7 +214,7 @@ git push -u origin feat/your-topic
   for UI work — attach a screenshot or short recording.
 - If your change affects scanning or deletion, state which OSes you tested.
 
-### 9. Changelog and release tags
+### 11. Changelog and release tags
 
 `CHANGELOG.md` is not maintained by hand. `scripts/changelog.sh` builds each
 entry from the commit subjects since the previous tag. `make changelog` writes the
@@ -193,17 +251,17 @@ fix the wording of a release.
 A version without a `vX.Y.Z` tag is not a release: the in-app updater compares
 against tags.
 
-### 10. Review process
+### 12. Review process
 
 - A maintainer reviews within a few days; CI runs `make verify`'s checks (gofmt, vet, tests, typecheck) on Linux, macOS and Windows.
-- Reviews look for: correctness of the matcher, data-safety (section 7), tests
+- Reviews look for: correctness of the matcher, data-safety (sections 7 and 9), tests
   for new behavior, and both locale catalogs updated.
 - Address feedback by pushing new commits; the maintainer squash-merges, so you
   do not need to force-push during review.
 - Merged pull requests are included in the next release notes and credited in
   the release.
 
-### 11. Reporting a bug well
+### 13. Reporting a bug well
 
 Include: app version (shown in the Settings panel), OS and version, the
 categories selected, the paths that were wrong, and — for deletion issues —
@@ -225,14 +283,21 @@ path that you do not want public.
    `categories.<id>.name/.desc/.risk` di kedua katalog. Nama folder generik
    (`build`, `target`, `bin`, `obj`) wajib punya filter konten. Kategori baru
    default-nya **tidak tercentang**.
-5. **Keamanan hapus**: scanner tidak pernah menghapus; hanya path hasil scan
+5. **Tingkat risiko & uninstaller**: beri setiap lokasi baru tingkat aman /
+   hati-hati / berbahaya lewat `markers`, `hints`, atau `Risk` di
+   `internal/rules`; kode alasan butuh `safety.reason.<kode>` di kedua katalog.
+   Tool developer baru untuk uninstaller cukup satu entri di `tools()` pada
+   `internal/uninstall/catalog.go`; package manager baru satu `cliSpec` di
+   `cli.go` beserta test parser. Jangan pernah menambah langkah yang menaikkan
+   hak — tampilkan perintahnya saja.
+6. **Keamanan hapus**: scanner tidak pernah menghapus; hanya path hasil scan
    yang boleh dihapus; skip-list sistem harus tetap terlindungi di semua
    platform; jangan mengikuti symlink atau menyeberang mount; fitur yang bisa
    membuat data hilang bersifat opt-in dan menampilkan catatan risiko.
-6. **Pull request**: satu perubahan logis per PR, branch dari `main`, commit
+7. **Pull request**: satu perubahan logis per PR, branch dari `main`, commit
    memakai Conventional Commits, jelaskan *mengapa*, tautkan issue
    (`Fixes #123`), dan sertakan tangkapan layar untuk perubahan UI.
-7. **Laporan bug**: sebutkan versi aplikasi, OS, kategori yang dipilih, path
+8. **Laporan bug**: sebutkan versi aplikasi, OS, kategori yang dipilih, path
    yang bermasalah, dan mode hapus (Tempat Sampah / Permanen). Sensor bagian
    path yang bersifat privat.
 

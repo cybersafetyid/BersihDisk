@@ -16,10 +16,15 @@ export type CategoryId =
   | "pip" | "ruby" | "flutter" | "terraform" | "nuget" | "jetbrains" | "webbuild"
   | "emulators";
 
+/** How risky deleting something is; the backend decides, the UI only shows it. */
+export type Level = "safe" | "caution" | "danger" | "blocked";
+
 export interface CategoryUI {
   id: CategoryId;
   icon: string;
   optIn: boolean;
+  /** Worst level any location of the category can reach. */
+  risk: Level;
 }
 
 export interface ScanItem {
@@ -30,6 +35,9 @@ export interface ScanItem {
   linkFrom?: string;
   /** Set when another item already contains this one, so its bytes are counted there. */
   nestedIn?: string;
+  /** Risk of deleting the item and the reason codes behind it (translated under safety.reason). */
+  level: Level;
+  reasons?: string[];
 }
 
 export interface ScanResult {
@@ -115,6 +123,8 @@ export interface DeleteProgress {
 export interface FailureItem {
   path: string;
   message: string;
+  /** Known fixable cause, translated under safety.hint (e.g. fullDiskAccess). */
+  hint?: string;
 }
 
 export interface DeleteResult {
@@ -127,3 +137,81 @@ export interface DeleteResult {
 
 export type Theme = "light" | "dark" | "system";
 export type Lang = "id" | "en";
+
+// ---- uninstaller ----
+
+export type InstalledKind = "app" | "runtime" | "package";
+
+export interface InstalledItem {
+  id: string;
+  provider: string;
+  kind: InstalledKind;
+  name: string;
+  version?: string;
+  path?: string;
+  icon: string;
+  /** Hint codes translated under uninstall.note. */
+  notes?: string[];
+}
+
+export interface PackageList {
+  packages: InstalledItem[];
+  /** Providers that failed while listing (not merely "not installed"). */
+  unavailable: string[];
+}
+
+export type StepKind = "command" | "path" | "profile" | "registry" | "envpath";
+
+export interface PlanStep {
+  id: string;
+  kind: StepKind;
+  label: string;
+  detail?: string;
+  size?: number;
+  level: Level;
+  reasons?: string[];
+  selected: boolean;
+  /** Command to run by hand when the step needs administrator rights. */
+  manual?: string;
+}
+
+export interface PlanWarning {
+  code: string;
+  detail?: string;
+}
+
+export interface UninstallPlan {
+  id: string;
+  packageId: string;
+  name: string;
+  steps: PlanStep[];
+  warnings?: PlanWarning[];
+  totalBytes: number;
+}
+
+export interface UninstallProgress {
+  done: number;
+  total: number;
+  step: string;
+  bytes: number;
+}
+
+export interface StepResult {
+  id: string;
+  status: "done" | "failed" | "skipped" | "manual";
+  message?: string;
+  hint?: string;
+}
+
+export interface UninstallResult {
+  ok: number;
+  failed: number;
+  skipped: number;
+  bytes: number;
+  steps: StepResult[];
+  manual?: string[];
+  aborted?: boolean;
+  duration: number;
+  /** Set when the request was refused before anything ran. */
+  error?: string;
+}

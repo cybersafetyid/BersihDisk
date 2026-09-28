@@ -23,7 +23,7 @@ Membersihkan gigabyte yang ditinggalkan toolchain-mu: `node_modules`, build arti
 [![vite](https://img.shields.io/badge/Vite-3-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
 
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
-[![tests](https://img.shields.io/badge/tests-34%20Go%20unit%20tests-34d399?style=flat-square)](#-pengujian)
+[![tests](https://img.shields.io/badge/tests-87%20Go%20unit%20tests-34d399?style=flat-square)](#-pengujian)
 [![categories](https://img.shields.io/badge/cleanup%20categories-24-4f8cff?style=flat-square)](#-kategori-pembersihan)
 [![telemetry](https://img.shields.io/badge/telemetry-none-brightgreen?style=flat-square)](#-privasi)
 [![languages](https://img.shields.io/badge/UI%20languages-EN%20%7C%20ID-6ba1ff?style=flat-square)](#-bahasa)
@@ -42,12 +42,17 @@ Membersihkan gigabyte yang ditinggalkan toolchain-mu: `node_modules`, build arti
 
 ## Tentang
 
-BersihDisk adalah pembersih disk desktop untuk developer. Satu mesin yang dipakai
+BersihDisk adalah pembersih disk **dan uninstaller** desktop untuk developer. Satu mesin yang dipakai
 membangun perangkat lunak menumpuk cache dengan cepat — `node_modules` di tiap
 proyek, modul cache Go dan Cargo, repositori Gradle dan Maven, layer buildx
 Docker, bobot model HuggingFace, DerivedData Xcode — dan sebagian besarnya bisa
 dibangun ulang. BersihDisk mencari direktori itu di semua drive yang terpasang,
-menampilkan isinya, lalu hanya menghapus apa yang kamu centang.
+menampilkan isinya, lalu hanya menghapus apa yang kamu centang. Setiap hasil diberi
+tingkat risiko, sehingga folder yang hanya *terlihat* seperti sampah — `node_modules`
+global, bundle aplikasi, gem Ruby yang kamu pasang sendiri — ditandai (atau ditolak)
+sebelum sempat merusak sesuatu. Bagian kedua aplikasi mencopot tool utuh — Node,
+Rust, Python, Docker, VS Code, dan kawan-kawan — beserta cache, konfigurasi, baris
+profil shell, entri PATH, dan kunci registry yang ditinggalkannya.
 
 Aplikasi desktop native (Go + Wails) dengan antarmuka web (React + TypeScript):
 scan cepat dan concurrent, UI tetap responsif. Tanpa akun, tanpa server, tanpa
@@ -60,6 +65,15 @@ unggah data.
 - **Engine dua fase** — fase *cari* (walking directory tree dengan skip-list proteksi folder sistem) lalu fase *ukur* (menghitung ukuran secara concurrent), dengan progress live dan batal
 - **Filter konten cerdas** — folder `build`/`target`/`bin`/`obj` generik hanya dihitung artefak jika isinya bukan kode sumber
 - **Telusuri isi folder** — hasil scan bisa dibuka isinya (lazy, ukuran tiap anak dihitung paralel) sehingga file/folder di dalamnya dipilih satu per satu; anak dari folder yang ikut terpilih tidak dihitung ganda
+
+**Keamanan** — lihat [Keamanan](#-keamanan)
+- **Tingkat risiko** — tiap hasil *aman*, *hati-hati*, *berbahaya*, atau *dilindungi*, lengkap dengan alasannya; hasil berisiko tidak pernah tercentang otomatis dan butuh centang "Saya mengerti"
+- **Penjaga keras** — folder home, folder data pribadi, kredensial (`~/.ssh`, `~/.aws`, …), dan pohon sistem operasi tidak bisa dihapus, dan dicek ulang di dalam deleter
+- **Pemeriksaan konteks** — `node_modules` di dalam bundle aplikasi, ekstensi editor, `nvm`/`pyenv`, atau folder `lib/` global berstatus berbahaya; yang tanpa `package.json` di sebelahnya berstatus hati-hati
+
+**Uninstall** — lihat [Uninstaller](#-uninstaller)
+- **Aplikasi, runtime, dan paket** — aplikasi macOS, *Installed apps* Windows, launcher & Flatpak Linux; toolchain Node/Python/Rust/Go/Ruby/Java; paket npm, pip, pipx, cargo, Homebrew, RubyGems, Scoop, dan `go install`
+- **Bersih, bukan sekadar dicopot** — perintah uninstall bawaan tool dulu, lalu cache, konfigurasi, baris profil shell, entri PATH Windows, dan kunci registry — setiap langkah bisa ditinjau dan dicentang satu per satu
 
 **Pembersihan**
 - **24 kategori** dengan ikon merek resmi — lihat [Kategori pembersihan](#-kategori-pembersihan)
@@ -81,34 +95,112 @@ unggah data.
 
 24 aturan tersedia. **Default** = sudah tercentang saat kategori dipilih;
 **opt-in** = tidak tercentang sampai kamu memintanya, karena menghapusnya berarti
-perlu unduh ulang atau datanya hilang permanen.
+perlu unduh ulang atau datanya hilang permanen. **Risiko** adalah tingkat terburuk
+yang bisa dicapai lokasi mana pun di kategori itu (lihat [Keamanan](#-keamanan));
+sel kosong berarti semua lokasinya aman.
 
-| # | Kategori | Target | Status |
+| # | Kategori | Target | Status | Risiko |
+|---|---|---|---|---|
+| 1 | Node.js | `node_modules` | Default |  |
+| 2 | Go | `~/go/pkg/mod`, cache unduhan, build cache | Default |  |
+| 3 | Rust | `target/` (filter konten), `~/.cargo/registry` | Default |  |
+| 4 | Gradle | artefak `build/` (filter) + `~/.gradle/caches` | Default |  |
+| 5 | Maven | `~/.m2/repository`, `target/` (filter) | Default | hati-hati — `~/.m2/repository` bisa berisi artefak hasil install lokal |
+| 6 | C / C++ | `CMakeFiles`, `cmake-build-*` | Default |  |
+| 7 | Python | `__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, venv | Default | hati-hati — virtualenv |
+| 8 | .NET | `bin/`, `obj/` (filter Debug/Release/.dll) | Default |  |
+| 9 | Build cache frontend | `.next`, `.nuxt`, `.turbo`, `.vite`, `.parcel-cache`, `.svelte-kit`, `.astro`, `coverage`, `storybook-static` | Default |  |
+| 10 | Xcode & iOS | DerivedData, iOS DeviceSupport, CoreSimulator, `.build` SwiftPM | Default |  |
+| 11 | Android | `app/build` (pola multi-segmen), `.cxx`, build-cache | Default |  |
+| 12 | Docker & Buildx | `~/.docker/buildx`, cache & log Docker Desktop (tidak pernah disk image WSL Windows) | Default | hati-hati — definisi builder buildx |
+| 13 | Homebrew | `Library/Caches/Homebrew`, `~/.cache/homebrew` | Default |  |
+| 14 | PHP & Composer | `~/.composer/cache`, `~/.cache/composer` | Default |  |
+| 15 | Cache paket Python | wheel cache pip / uv / Poetry, `~/.conda/pkgs` | Default |  |
+| 16 | Flutter & Pub | `~/.pub-cache/hosted`, engine cache, `.dart_tool` | Default | hati-hati — tool yang diaktifkan global |
+| 17 | Terraform | `.terraform/`, plugin cache | Default |  |
+| 18 | .NET NuGet | `~/.nuget/packages`, HTTP cache | Default |  |
+| 19 | JetBrains | cache indeks IDE (tidak pernah folder Toolbox tempat IDE terpasang) | Default |  |
+| 20 | Electron & cache browser | electron, npm `_cacache`/`_npx`, yarn, pnpm, Playwright, Cypress | **opt-in** | hati-hati |
+| 21 | Temp & cache sistem | `~/.cache`, `%TEMP%`, CrashDumps | **opt-in** | hati-hati — dikosongkan, foldernya tidak dihapus |
+| 22 | Cache AI/ML | HuggingFace, PyTorch, Ollama, Whisper | **opt-in** | hati-hati — unduhan sangat besar |
+| 23 | Ruby & Gems | `~/.gem`, cache bundler | **opt-in** | **berbahaya** — `~/.gem` berisi gem terpasang |
+| 24 | Emulator & simulator | AVD Android, data iOS Simulator | **opt-in** | **berbahaya** — AVD dan simulator menyimpan data aplikasi |
+
+## 🗑 Uninstaller
+
+Pindah ke **Uninstall** di header. BersihDisk mendaftar apa yang terpasang, dan
+memilih satu entri membuka **rencananya** — tidak ada yang dijalankan dari daftar itu.
+
+| Kelompok | Ditemukan lewat | Dicopot dengan |
+|---|---|---|
+| Aplikasi | macOS `/Applications` + `~/Applications` (bundle ID dari `Info.plist`); registry *Installed apps* Windows; launcher `~/.local/share/applications` di Linux; Flatpak; Homebrew cask | macOS: bundle + berkas `~/Library`-nya; Windows: uninstaller bawaan vendor; cask: `brew uninstall --cask --zap`; Flatpak: `--delete-data` |
+| Runtime & SDK | katalog data: rustup, nvm, fnm, Volta, pyenv, conda, SDKMAN!, Bun, Deno, pnpm, Poetry, uv, Go, Gradle, Maven, Flutter/Dart, Composer, .NET, rbenv, RVM | perintah bawaan tool bila ada (`rustup self uninstall`, `conda init --reverse`, `rvm implode`), lalu foldernya |
+| Paket | `npm ls -g`, `pip list`, `pipx list`, `cargo install --list`, `brew leaves`, `gem list`, `scoop export`, `~/go/bin`; aplikasi Microsoft Store (`Get-AppxPackage`); Linux `apt-mark showmanual` + `dpkg-query`, `snap list`, `pacman -Qe`, `dnf repoquery --userinstalled` | `npm uninstall -g`, `pip uninstall`, `cargo uninstall`, `brew uninstall`, `Remove-AppxPackage`, … Paket sistem Linux: `apt purge`, `snap remove --purge`, `pacman -Rns`, `dnf remove` ditampilkan untuk kamu jalankan dengan `sudo` |
+
+**Arti "bersih".** Satu rencana bisa berisi lima jenis langkah, semuanya tampil
+sebelum kamu konfirmasi:
+
+1. **Perintah** — uninstall bawaan. Bila gagal, proses berhenti: sisa dari tool yang
+   menolak dicopot tidak pernah dihapus.
+2. **File & folder** — cache, data, konfigurasi; default dipindah ke Tempat Sampah.
+   Lokasi yang ditemukan lewat pengenal pasti (bundle ID, folder milik tool)
+   tercentang dari awal; tebakan berbasis nama, file konfigurasi yang mungkin berisi
+   token, dan apa pun yang mungkin hasil kerjamu (`~/go/src`, Xcode Archives, volume
+   Docker) **tidak dicentang** dan diberi peringatan.
+3. **Konfigurasi shell** — baris persis yang ditambahkan installer ke `~/.zshrc`,
+   `~/.bashrc`, `~/.profile`, konfigurasi fish, dan sejenisnya (`. "$HOME/.cargo/env"`,
+   `export NVM_DIR=…`, blok `# >>> conda initialize >>>`). Berkas dicadangkan di
+   sebelahnya sebagai `*.bersihdisk-<waktu>.bak` sebelum ditulis ulang.
+4. **Registry Windows** — kunci uninstall yang tertinggal; kunci diekspor ke berkas
+   `.reg` di `%AppData%\BersihDisk\backups` sebelum dihapus. Hanya `HKCU` yang
+   diubah otomatis.
+5. **PATH** — entri PATH pengguna Windows yang menunjuk ke tool yang dicopot.
+
+**Hak administrator.** BersihDisk tidak pernah menaikkan hak sendiri. Langkah yang
+membutuhkannya (`/usr/local/go`, `/usr/local/share/dotnet`, kunci registry seluruh
+mesin) ditampilkan bersama perintah persis untuk disalin dan dijalankan sendiri,
+dan dilaporkan sebagai *manual*.
+
+**Rincian platform** — setiap pilihan berasal dari dokumentasi resmi vendor/tool
+(lihat [Dasar riset](#dasar-riset)):
+
+| | macOS | Windows | Linux |
 |---|---|---|---|
-| 1 | Node.js | `node_modules` | Default |
-| 2 | Go | `~/go/pkg/mod`, cache unduhan, build cache | Default |
-| 3 | Rust | `target/` (filter konten), `~/.cargo/registry` | Default |
-| 4 | Gradle | artefak `build/` (filter) + `~/.gradle/caches` | Default |
-| 5 | Maven | `~/.m2/repository`, `target/` (filter) | Default |
-| 6 | C / C++ | `CMakeFiles`, `cmake-build-*` | Default |
-| 7 | Python | `__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, venv | Default |
-| 8 | .NET | `bin/`, `obj/` (filter Debug/Release/.dll) | Default |
-| 9 | Build cache frontend | `.next`, `.nuxt`, `.turbo`, `.vite`, `.parcel-cache`, `.svelte-kit`, `.astro`, `coverage`, `storybook-static` | Default |
-| 10 | Xcode & iOS | DerivedData, iOS DeviceSupport, CoreSimulator, `.build` SwiftPM | Default |
-| 11 | Android | `app/build` (pola multi-segmen), `.cxx`, build-cache | Default |
-| 12 | Docker & Buildx | `~/.docker/buildx`, cache & log Docker Desktop | Default |
-| 13 | Homebrew | `Library/Caches/Homebrew`, `~/.cache/homebrew` | Default |
-| 14 | PHP & Composer | `~/.composer/cache`, `~/.cache/composer` | Default |
-| 15 | Cache paket Python | wheel cache pip / uv / Poetry, `~/.conda/pkgs` | Default |
-| 16 | Flutter & Pub | `~/.pub-cache/hosted`, engine cache, `.dart_tool` | Default |
-| 17 | Terraform | `.terraform/`, plugin cache | Default |
-| 18 | .NET NuGet | `~/.nuget/packages`, HTTP cache | Default |
-| 19 | JetBrains | cache indeks IDE | Default |
-| 20 | Electron & cache browser | electron, npm `_cacache`/`_npx`, yarn, pnpm, Playwright, Cypress | **opt-in** |
-| 21 | Temp & cache sistem | `~/.cache`, `%TEMP%`, CrashDumps | **opt-in** |
-| 22 | Cache AI/ML | HuggingFace, PyTorch, Ollama, Whisper | **opt-in** |
-| 23 | Ruby & Gems | `~/.gem`, cache bundler | **opt-in** |
-| 24 | Emulator & simulator | AVD Android, data iOS Simulator | **opt-in** |
+| Daftar aplikasi | bundle `.app`, bundle ID lewat `plutil` | Kunci registry Uninstall di **tiga** tempat: `HKLM`, `HKLM\WOW6432Node`, dan `HKCU` (instalasi per-pengguna seperti Chrome, Teams, Zoom) — bukan `Win32_Product` yang memicu konfigurasi ulang MSI | launcher `$XDG_DATA_HOME/applications`, Flatpak, Snap |
+| Uninstall | bundle dipindah; binary `uninstall` bawaan Docker ditampilkan (meminta password) | `QuietUninstallString` bila ada, jika tidak `UninstallString`; MSI `/I{GUID}` diubah jadi `/X{GUID}`; dijalankan lewat `start /wait` agar UAC muncul normal | `flatpak uninstall --delete-data`; `apt purge` (bukan `remove` yang menyisakan config), `snap remove --purge` |
+| Sisa | lokasi `~/Library` dari bundle ID bersifat pasti; tebakan nama tidak dicentang; **Group Containers hanya dihapus bila ID grupnya milik aplikasi itu**, karena macOS membaginya antar aplikasi | `%APPDATA%`, `%LOCALAPPDATA%`, `%PROGRAMDATA%` sesuai dokumentasi vendor (VS Code, Docker, Android Studio); kunci registry dicadangkan ke `.reg` dulu | `$XDG_CONFIG_HOME`, `$XDG_DATA_HOME`, `$XDG_CACHE_HOME`, `$XDG_STATE_HOME` — dihormati bila dipindah pengguna, default spesifikasi XDG bila tidak |
+| PATH | baris profil shell, dicadangkan | PATH pengguna ditulis **langsung di registry**, tipe `REG_EXPAND_SZ` dipertahankan, lalu `WM_SETTINGCHANGE` disiarkan — bukan `setx` yang memotong di 1024 karakter | baris profil shell (`.profile`, `.bashrc`, fish), dicadangkan |
+| Jebakan | menghapus `~/Library/Containers/*` gagal dengan *Operation not permitted* bahkan dengan `sudo` sampai aplikasi punya **Full Disk Access** — BersihDisk mendeteksi dan memberi tahu | aplikasi Store/MSIX tidak ada di registry Uninstall sama sekali | daftar "user installed" `dnf` bisa berisi semuanya setelah `system-upgrade`; periksa dulu |
+
+**Cakupan platform.** macOS diuji menyeluruh. Kode registry Windows dan launcher
+Linux ditulis mengikuti tata letak terdokumentasi tiap platform serta dicakup unit
+test dan kompilasi lintas-platform di CI, tetapi belum sebanyak dipakai di mesin
+sungguhan — tinjau rencana sebelum konfirmasi, seperti biasa. Paket sistem yang
+dikelola `apt`/`dnf`/`snap` butuh root dan diserahkan ke tool tersebut.
+
+## 📚 Dasar riset
+
+Lokasi uninstall dan cache diperiksa terhadap dokumentasi vendor dan praktik
+komunitas, bukan ditebak. Koreksi hasil riset: home Cargo di Windows adalah
+`%USERPROFILE%\.cargo` (bukan `%LocalAppData%`), cache npm Windows
+`%LocalAppData%\npm-cache`, cache Go `%LocalAppData%\go-build`, Yarn di macOS
+`~/Library/Caches/Yarn`, cache `pip` masuk kategori pip, dan clean uninstall VS Code
+juga menghapus `~/.vscode-shared`.
+
+- [Docker Desktop — uninstall](https://docs.docker.com/desktop/uninstall/) (daftar berkas per OS, catatan Full Disk Access macOS)
+- [VS Code — uninstall / clean uninstall](https://code.visualstudio.com/docs/setup/uninstall)
+- [conda — uninstall](https://docs.conda.io/projects/conda/en/latest/user-guide/install/macos.html#uninstalling-anaconda-or-miniconda)
+- [nvm — manual uninstall](https://github.com/nvm-sh/nvm#manual-uninstall), [rustup](https://rust-lang.github.io/rustup/installation/index.html), [Cargo home](https://doc.rust-lang.org/cargo/guide/cargo-home.html)
+- [Homebrew Cask Cookbook — `zap`](https://docs.brew.sh/Cask-Cookbook#stanza-zap)
+- [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir/latest/)
+- [Windows Installer — kunci registry Uninstall](https://learn.microsoft.com/en-us/windows/win32/msi/uninstall-registry-key), [winget `uninstall`](https://learn.microsoft.com/en-us/windows/package-manager/winget/uninstall), [`Remove-AppxPackage`](https://learn.microsoft.com/en-us/powershell/module/appx/remove-appxpackage)
+- [Cache npm](https://docs.npmjs.com/cli/v8/commands/npm-cache/), [cache Yarn](https://classic.yarnpkg.com/lang/en/docs/cli/cache/)
+- Komunitas: Stack Overflow soal `UninstallString`/`QuietUninstallString` dan hive `HKCU`, laporan pemotongan `setx`, `pkgutil --forget`, dan tulisan soal kepemilikan Group Containers.
+
+**Sengaja tidak dilakukan:** menaikkan hak akses. `osascript … with administrator
+privileges`, `pkexec`, dan UAC berskrip adalah pola yang ditandai alat keamanan,
+dan perintah salah sebagai root tidak bisa dibatalkan — jadi langkah khusus root
+ditampilkan untuk kamu jalankan sendiri.
 
 ## 🚀 Mulai menggunakan
 
@@ -244,22 +336,74 @@ UI pilih drive & kategori → `StartScan` (goroutine async) → event
 → modal konfirmasi (trash/permanen) → `StartDelete` → event
 `delete:progress` / `delete:finished` → toast ringkasan.
 
-`internal/` berisi `rules` (definisi kategori + matcher), `drive` (deteksi drive
-per platform), `scanner` (engine dua fase concurrent), `deleter` (hapus massal +
-progress + batal), `browser` (daftar isi folder beserta ukuran rekursif),
+Alur uninstall: `ListPackages` (provider berjalan bersamaan) → pilih satu →
+`PlanUninstall` (langkah, ukuran, peringatan; disimpan di server) → tinjau dan
+setujui → `StartUninstall` dengan ID langkah → `uninstall:progress` /
+`uninstall:finished`.
+
+`internal/` berisi `safety` (tingkat risiko, penjaga hapus keras, pemeriksaan
+konteks), `rules` (definisi kategori + matcher + petunjuk risiko + penanda proyek),
+`drive` (deteksi drive per platform), `scanner` (engine dua fase concurrent +
+penilaian risiko), `deleter` (hapus massal + guard + keep-root + batal),
+`uninstall` (provider paket/aplikasi/toolchain, rencana, eksekusi, pembersihan
+profil/PATH/registry), `browser` (daftar isi folder beserta ukuran rekursif),
 `reveal` (handoff ke OS), `updater` (cek rilis, unduh, verifikasi sha256),
 `appicon` (ikon Dock runtime), dan `sysinfo`. `frontend/src/` tersusun atas
 `App.tsx`, `backend.ts`, panel per fitur (`categories/`, `drives/`, `scan/`,
-`results/`, `update/`), `common/`, `hooks/`, `i18n/`, `lib/`, dan `styles/`.
+`results/`, `uninstall/`, `update/`), `common/` (termasuk `RiskBadge`/`RiskAck`), `hooks/`, `i18n/`, `lib/`, dan `styles/`.
 
 ## 🔒 Keamanan
 
+Alat yang menghapus berkas harus layak dipercaya, jadi jalur destruktifnya
+dibuat sempit, dan *backend* — bukan UI — yang menegakkan setiap aturan berikut.
+
+**Setiap hasil membawa tingkat risiko**, ditentukan di Go dan ditampilkan dengan alasannya:
+
+| Tingkat | Arti | Yang dilakukan aplikasi |
+|---|---|---|
+| **Aman** | dibangun ulang otomatis, tidak ada yang hilang | tercentang dari awal, satu konfirmasi |
+| **Hati-hati** | butuh unduh ulang atau mungkin berisi sesuatu yang unik (`~/.m2/repository`, virtualenv, folder tanpa file proyek di sebelahnya) | tidak pernah dicentang otomatis, tampil dengan alasan, butuh centang "Saya mengerti" |
+| **Berbahaya** | bisa merusak aplikasi/tool terpasang atau menghapus data (`node_modules` global, apa pun di dalam `.app`, ekstensi editor, instalasi `nvm`/`pyenv`, `~/.gem`, perangkat simulator) | seperti hati-hati, ditambah **hanya Tempat Sampah** — Permanen dimatikan |
+| **Dilindungi** | tidak pernah dihapus: root filesystem, folder home, `Documents`/`Desktop`/…, `~/.ssh`, `~/.aws`, `~/.kube`, `/System`, `/usr/bin`, `C:\Windows`, `Program Files` | tampil abu-abu, checkbox mati, ditolak lagi oleh deleter |
+
+Cara tingkat risiko dihasilkan (`internal/safety`, `internal/rules`):
+
+- **Penjaga keras** — path dicek apa adanya *dan* setelah symlink diurai, sehingga
+  link ke `~/.ssh` tidak bisa menyelundupkannya. Deleter memanggil penjaga yang
+  sama, jadi bug di tempat lain pun tidak bisa menghapus path terlindungi.
+- **Konteks** — sekitar sebuah temuan lebih penting daripada namanya: di dalam
+  bundle aplikasi, `extensions/` editor, version manager, folder global
+  `lib/node_modules`, atau prefix package manager (`/opt/homebrew`, `/usr/local`).
+- **Penanda proyek** — `node_modules` butuh `package.json` di sebelahnya, `target/`
+  butuh `Cargo.toml` atau `pom.xml`, `bin/obj` butuh `.csproj`, dan seterusnya.
+  Tanpa itu item berstatus *hati-hati*, tidak dihapus diam-diam.
+- **Petunjuk aturan** — lokasi tertentu dinaikkan di atas kategorinya
+  (`.m2/repository`, `~/.gem`, `.android/avd`, builder buildx, `.pub-cache/hosted`).
+- **Penegakan di server** — `StartDelete` hanya menerima path dari scan terakhir,
+  menurunkan ulang tingkatnya, menolak yang dilindungi, dan menolak apa pun di atas
+  aman kecuali persetujuan ikut dikirim. Berbahaya memaksa Tempat Sampah apa pun
+  mode yang diminta.
+- **Wadah dikosongkan, bukan dihapus** — `%TEMP%` dan `~/.cache` tetap ada;
+  entri yang sedang dipakai dibiarkan dan dilaporkan.
+- **Path yang sempit** — aturan Docker Windows hanya menyasar `Docker\log` (disk
+  image WSL berisi semua image dan volume ada di sebelahnya); JetBrains menyasar
+  satu folder per IDE dan tidak pernah Toolbox, tempat IDE terpasang berada.
+
+Tetap berlaku sejak awal:
+
 - Scan **tidak pernah** menghapus; penghapusan hanya menerima path eksplisit hasil scan
-- Skip-list proteksi: `.Trash`, `$Recycle.Bin`, `System Volume Information`, `Windows`, `Program Files`, `Library`, `/usr`, `/etc`, dll.
-- Tidak mengikuti symlink (WalkDir tidak menyeberang mount/symlink)
-- Nama folder generik wajib lolos filter konten
+- Skip-list menjauhkan walker dari lokasi sistem: `.Trash`, `$Recycle.Bin`, `System Volume Information`, `Windows`, `Program Files`, `Library`, `/usr`, `/etc`, dll.
+- Tidak mengikuti symlink (walk tidak menyeberang mount/symlink)
+- Nama folder generik (`build`, `target`, `bin`, `coverage`) wajib lolos filter konten
 - Mode permanen disertai modal peringatan merah + konfirmasi ganda
-- Kategori AI, emulator, browser, dan temp bersifat opt-in
+- Kategori yang perlu unduh ulang besar atau tidak bisa dipulihkan bersifat opt-in
+
+**Keamanan uninstaller** memakai penjaga yang sama ditambah aturannya sendiri: hanya
+menjalankan langkah dari rencana yang ia simpan sendiri (UI mengirim ID langkah,
+bukan perintah atau path), perintah dijalankan tanpa shell dari daftar argumen yang
+dibuat backend, perintah yang gagal menghentikan proses, profil shell yang diubah
+dan kunci registry yang diekspor dicadangkan lebih dulu, dan langkah yang butuh
+administrator ditampilkan, tidak pernah dijalankan.
 
 ## 🕸 Privasi
 
@@ -290,9 +434,13 @@ go test ./internal/... -v     # detail tiap test
 go vet ./...
 ```
 
-34 unit test mencakup matcher aturan (termasuk filter konten yang melindungi
-pohon sumber), deteksi drive, scanner dua fase, deleter, browser folder, dan
-updater. Kategori baru diharapkan datang bersama test matcher-nya.
+87 unit test mencakup penjaga keamanan (path terlindungi, lolos lewat symlink,
+penilaian konteks), matcher aturan dan petunjuk risiko, scanner dua fase, deleter
+(guard, keep-root), penyaringan hapus di sisi server, uninstaller (parser keluaran
+asli tiap package manager, pembersihan profil shell, penyusunan dan eksekusi
+rencana di `$HOME` sandbox, berhenti saat gagal, persetujuan, langkah khusus
+admin, kewarasan katalog), dan updater. Kategori baru dan entri katalog diharapkan
+datang bersama test-nya.
 
 ## 🩺 Pemecahan masalah
 

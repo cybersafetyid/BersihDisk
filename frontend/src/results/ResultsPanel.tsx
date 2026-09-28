@@ -3,12 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { Icon } from "../common/Icon";
+import { RiskBadge } from "../common/RiskBadge";
+import { bulkSelectable } from "../lib/risk";
 import { formatSize, formatNumber, shortPath } from "../lib/format";
 import { listFolder } from "../backend";
 import { coveredByAncestor, hasSelectedBelow } from "../lib/paths";
 import { useI18n } from "../i18n/i18n";
 import type { TFunc } from "../i18n/i18n";
-import type { ScanResult, ScanItem, CategoryUI, FolderEntry } from "../lib/types";
+import type { ScanResult, ScanItem, CategoryUI, FolderEntry, Level } from "../lib/types";
 
 interface Node {
   path: string;
@@ -16,17 +18,26 @@ interface Node {
   size: number;
   isDir: boolean;
   note?: string;
+  /** Risk of the scan item this row is (children inherit it and show no badge). */
+  level?: Level;
+  reasons?: string[];
+  categoryNote?: string;
 }
 
 const baseName = (p: string) => p.split(/[\\/]/).filter(Boolean).pop() ?? p;
 
 function nodeFromItem(it: ScanItem, t: TFunc["t"]): Node {
+  const categoryNote = it.level !== "safe" ? t(`categories.${it.category}.risk`) : undefined;
   const note = it.linkFrom
     ? t("tree.symlinkFrom", { path: shortPath(it.linkFrom, 46) })
     : it.nestedIn
       ? t("tree.nestedIn", { path: shortPath(it.nestedIn, 46) })
       : undefined;
-  return { path: it.path, name: baseName(it.path), size: it.size, isDir: true, note };
+  return {
+    path: it.path, name: baseName(it.path), size: it.size, isDir: true, note,
+    level: it.level, reasons: it.reasons,
+    categoryNote: categoryNote && categoryNote !== `categories.${it.category}.risk` ? categoryNote : undefined,
+  };
 }
 
 function nodeFromEntry(e: FolderEntry, t: TFunc["t"]): Node {
@@ -113,15 +124,17 @@ function Row({ node, depth, selected, onToggle, onSelectMany, onReveal, onEntrie
   };
 
   const indent = 12 + depth * 18;
+  const blocked = node.level === "blocked";
+  const level = node.level ?? "safe";
 
   return (
     <>
-      <label className={`item-row ${checked ? "checked" : ""}`} style={{ paddingLeft: indent }}>
+      <label className={`item-row ${checked ? "checked" : ""} ${level !== "safe" ? `row-${level}` : ""}`} style={{ paddingLeft: indent }}>
         <input
           ref={box}
           type="checkbox"
-          checked={checked}
-          disabled={inherited && !onExclude}
+          checked={checked && !blocked}
+          disabled={blocked || (inherited && !onExclude)}
           onChange={onBoxChange}
         />
         {node.isDir ? (
@@ -143,6 +156,7 @@ function Row({ node, depth, selected, onToggle, onSelectMany, onReveal, onEntrie
           </span>
           {node.note && <span className="item-note">{node.note}</span>}
         </span>
+        {depth === 0 && <RiskBadge level={level} reasons={node.reasons} categoryNote={node.categoryNote} />}
         <span className="item-size">{formatSize(node.size)}</span>
         <button
           className="tree-reveal"
@@ -212,17 +226,23 @@ export function ResultsPanel({ result, categories, selected, onToggleItem, onSel
   const categoryName = (id: string) => t(`categories.${id}.name`);
   const categoryIcon = (id: string) => categories.find((c) => c.id === id)?.icon ?? "eraser";
 
+  // Bulk actions only tick plainly safe items; a risky one must be ticked by hand.
+  const pickable = (items: ScanItem[]) => items.filter(bulkSelectable).map((i) => i.path);
+
   const toggleGroup = (items: ScanItem[]) => {
-    const paths = items.map((i) => i.path);
-    const all = paths.every((p) => selected.has(p));
+    const paths = pickable(items);
+    const all = paths.length > 0 && paths.every((p) => selected.has(p));
     onSelectMany(paths, !all);
   };
 
   const pickLarge = () => {
-    const large = result.items.filter((i) => i.size >= 100 * 1024 * 1024).map((i) => i.path);
+    const large = pickable(result.items.filter((i) => i.size >= 100 * 1024 * 1024));
     onSelectMany(result.items.map((i) => i.path), false);
     onSelectMany(large, true);
   };
+
+  const riskyCount = result.items.filter((i) => i.level === "caution" || i.level === "danger").length;
+  const blockedCount = result.items.filter((i) => i.level === "blocked").length;
 
   return (
     <div className="results-panel">
@@ -237,7 +257,7 @@ export function ResultsPanel({ result, categories, selected, onToggleItem, onSel
         </div>
         <div className="results-actions">
           <button className="btn btn-ghost btn-small" onClick={pickLarge}>{t("results.selectLarge")}</button>
-          <button className="btn btn-ghost btn-small" onClick={() => onSelectMany(result.items.map((i) => i.path), true)}>
+          <button className="btn btn-ghost btn-small" onClick={() => onSelectMany(pickable(result.items), true)}>
             {t("results.selectAll")}
           </button>
           <button className="btn btn-ghost btn-small" onClick={() => onSelectMany(result.items.map((i) => i.path), false)}>
@@ -246,13 +266,25 @@ export function ResultsPanel({ result, categories, selected, onToggleItem, onSel
         </div>
       </div>
 
+      {(riskyCount > 0 || blockedCount > 0) && (
+        <div className="risk-banner">
+          <Icon name="triangle-alert" size={16} />
+          <span>
+            {riskyCount > 0 && t("safety.bannerRisky", { count: riskyCount })}
+            {riskyCount > 0 && blockedCount > 0 && " "}
+            {blockedCount > 0 && t("safety.bannerBlocked", { count: blockedCount })}
+          </span>
+        </div>
+      )}
+
       {groups.length === 0 && <p className="results-empty">{t("results.empty")}</p>}
 
       <div className="results-groups">
         {groups.map(([catId, items]) => {
           const total = items.reduce((s, i) => s + i.size, 0);
           const groupCollapsed = collapsed.has(catId);
-          const allChecked = items.every((i) => selected.has(i.path));
+          const selectable = pickable(items);
+          const allChecked = selectable.length > 0 && selectable.every((p) => selected.has(p));
           return (
             <div key={catId} className="group">
               <div className="group-head">
@@ -267,7 +299,7 @@ export function ResultsPanel({ result, categories, selected, onToggleItem, onSel
                     {t("results.groupInfo", { count: items.length, size: formatSize(total) })}
                   </span>
                 </button>
-                <button className="btn btn-ghost btn-small" onClick={() => toggleGroup(items)}>
+                <button className="btn btn-ghost btn-small" onClick={() => toggleGroup(items)} disabled={selectable.length === 0}>
                   {t(allChecked ? "results.deselectGroup" : "results.selectGroup")}
                 </button>
               </div>

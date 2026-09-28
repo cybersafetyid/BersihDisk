@@ -23,7 +23,7 @@ Frees the gigabytes your toolchain leaves behind: `node_modules`, build artifact
 [![vite](https://img.shields.io/badge/Vite-3-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
 
 [![license](https://img.shields.io/badge/license-MIT-blue?style=flat-square)](LICENSE)
-[![tests](https://img.shields.io/badge/tests-34%20Go%20unit%20tests-34d399?style=flat-square)](#-testing)
+[![tests](https://img.shields.io/badge/tests-87%20Go%20unit%20tests-34d399?style=flat-square)](#-testing)
 [![categories](https://img.shields.io/badge/cleanup%20categories-24-4f8cff?style=flat-square)](#-cleanup-categories)
 [![telemetry](https://img.shields.io/badge/telemetry-none-brightgreen?style=flat-square)](#-privacy)
 [![languages](https://img.shields.io/badge/UI%20languages-EN%20%7C%20ID-6ba1ff?style=flat-square)](README.id.md)
@@ -40,12 +40,17 @@ Frees the gigabytes your toolchain leaves behind: `node_modules`, build artifact
 
 ## About
 
-BersihDisk is a desktop disk cleaner aimed at developers. A single machine that
+BersihDisk is a desktop disk cleaner **and uninstaller** aimed at developers. A single machine that
 builds software accumulates caches fast — a `node_modules` per project, Go and
 Cargo module caches, Gradle and Maven repositories, Docker buildx layers,
 HuggingFace weights, Xcode DerivedData — and most of it is regenerable.
 BersihDisk finds those directories across every mounted drive, shows you what is
-inside them, and deletes only what you ticked.
+inside them, and deletes only what you ticked. Every result is graded for risk,
+so a folder that only *looks* like junk — a global `node_modules`, an app bundle,
+the Ruby gems you installed — is flagged (or refused) before it can hurt. The
+second half of the app removes whole tools — Node, Rust, Python, Docker, VS Code
+and friends — together with the caches, configuration, shell-profile lines, PATH
+entries and registry keys they leave behind.
 
 It is a native desktop app (Go + Wails) with a web-tech UI (React + TypeScript),
 so scanning is fast and concurrent while the interface stays responsive and
@@ -58,6 +63,15 @@ animated. No accounts, no server, no upload.
 - **Two-phase engine** — a *find* phase walking the tree with a system-folder skip-list, then a *measure* phase sizing candidates concurrently, with live progress and cancellation
 - **Content-aware matching** — generic `build/`, `target/`, `bin/`, `obj/` folders only count as artifacts when their contents prove it, so source trees are never matched
 - **Folder browser** — open any scan result to see its children (sizes computed in parallel, lazily) and pick individual entries; children inside a selected folder are not double-counted
+
+**Safety** — see [Safety](#-safety)
+- **Risk grading** — every result is *safe*, *caution*, *danger* or *protected*, with the reason in plain words; risky results are never ticked automatically and need an "I understand" acknowledgement
+- **Hard guard** — home folder, personal data folders, credentials (`~/.ssh`, `~/.aws`, …) and operating-system trees can never be deleted, enforced again inside the deleter
+- **Context checks** — a `node_modules` inside an app bundle, an editor extension, `nvm`/`pyenv`, or a global `lib/` folder is danger; one without a `package.json` beside it is caution
+
+**Uninstall** — see [Uninstaller](#-uninstaller)
+- **Apps, runtimes and packages** — macOS apps, Windows *Installed apps*, Linux launchers and Flatpaks; Node/Python/Rust/Go/Ruby/Java toolchains; packages of npm, pip, pipx, cargo, Homebrew, RubyGems, Scoop and `go install`
+- **Clean, not just removed** — the tool's own uninstall command first, then caches, config, shell-profile lines, Windows PATH entries and registry keys — every step reviewable and individually tickable
 
 **Cleanup**
 - **24 categories** with official brand icons — see [Cleanup categories](#-cleanup-categories)
@@ -79,34 +93,111 @@ animated. No accounts, no server, no upload.
 
 24 rules ship today. **Default** = pre-checked when you pick the category;
 **opt-in** = unchecked until you ask for it, because deleting it costs a
-re-download or is unrecoverable.
+re-download or is unrecoverable. **Risk** is the worst grade any location of the
+category can reach (see [Safety](#-safety)); an empty cell means every location
+is safe.
 
-| # | Category | Targets | Default |
+| # | Category | Targets | Default | Risk |
+|---|---|---|---|---|
+| 1 | Node.js | `node_modules` | Default |  |
+| 2 | Go | `~/go/pkg/mod`, download cache, build cache | Default |  |
+| 3 | Rust | `target/` (content-filtered), `~/.cargo/registry` | Default |  |
+| 4 | Gradle | `build/` artifacts (filtered), `~/.gradle/caches` | Default |  |
+| 5 | Maven | `~/.m2/repository`, `target/` (filtered) | Default | caution — `~/.m2/repository` may hold locally installed artifacts |
+| 6 | C / C++ | `CMakeFiles`, `cmake-build-*` | Default |  |
+| 7 | Python | `__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, virtualenvs | Default | caution — virtualenvs |
+| 8 | .NET | `bin/`, `obj/` (Debug/Release/.dll filter) | Default |  |
+| 9 | Frontend build cache | `.next`, `.nuxt`, `.turbo`, `.vite`, `.parcel-cache`, `.svelte-kit`, `.astro`, `coverage`, `storybook-static` | Default |  |
+| 10 | Xcode & iOS | DerivedData, iOS DeviceSupport, CoreSimulator caches, SwiftPM `.build` | Default |  |
+| 11 | Android | `app/build` (multi-segment pattern), `.cxx`, build-cache | Default |  |
+| 12 | Docker & Buildx | `~/.docker/buildx`, Docker Desktop cache and logs (never the Windows WSL disk image) | Default | caution — buildx builder definitions |
+| 13 | Homebrew | `Library/Caches/Homebrew`, `~/.cache/homebrew` | Default |  |
+| 14 | PHP & Composer | `~/.composer/cache`, `~/.cache/composer` | Default |  |
+| 15 | Python package cache | pip / uv / Poetry wheel caches, `~/.conda/pkgs` | Default |  |
+| 16 | Flutter & Pub | `~/.pub-cache/hosted`, engine cache, `.dart_tool` | Default | caution — globally activated tools |
+| 17 | Terraform | `.terraform/`, plugin cache | Default |  |
+| 18 | .NET NuGet | `~/.nuget/packages`, HTTP cache | Default |  |
+| 19 | JetBrains | IDE index caches (never the Toolbox folder that holds installed IDEs) | Default |  |
+| 20 | Electron & browser cache | electron, npm `_cacache`/`_npx`, yarn, pnpm, Playwright, Cypress | **opt-in** | caution |
+| 21 | Temp & system cache | `~/.cache`, `%TEMP%`, CrashDumps | **opt-in** | caution — emptied, never removed |
+| 22 | AI / ML cache | HuggingFace, PyTorch, Ollama, Whisper | **opt-in** | caution — very large downloads |
+| 23 | Ruby & Gems | `~/.gem`, Bundler cache | **opt-in** | **danger** — `~/.gem` holds installed gems |
+| 24 | Emulators & simulators | Android AVDs, iOS Simulator data | **opt-in** | **danger** — AVDs and simulators hold app data |
+
+## 🗑 Uninstaller
+
+Switch to **Uninstall** in the header. BersihDisk lists what is installed, and
+picking an entry opens its **plan** — nothing runs from the list itself.
+
+| Group | Found through | Removed with |
+|---|---|---|
+| Applications | macOS `/Applications` + `~/Applications` (bundle ID from `Info.plist`); Windows *Installed apps* registry keys; Linux `~/.local/share/applications` launchers; Flatpak; Homebrew casks | macOS: the bundle plus its `~/Library` files; Windows: the vendor's own uninstaller; casks: `brew uninstall --cask --zap`; Flatpak: `--delete-data` |
+| Runtimes & SDKs | a data catalog: rustup, nvm, fnm, Volta, pyenv, conda, SDKMAN!, Bun, Deno, pnpm, Poetry, uv, Go, Gradle, Maven, Flutter/Dart, Composer, .NET, rbenv, RVM | the tool's own command when it has one (`rustup self uninstall`, `conda init --reverse`, `rvm implode`), then its folders |
+| Packages | `npm ls -g`, `pip list`, `pipx list`, `cargo install --list`, `brew leaves`, `gem list`, `scoop export`, `~/go/bin`; Microsoft Store apps (`Get-AppxPackage`); Linux `apt-mark showmanual` + `dpkg-query`, `snap list`, `pacman -Qe`, `dnf repoquery --userinstalled` | `npm uninstall -g`, `pip uninstall`, `cargo uninstall`, `brew uninstall`, `Remove-AppxPackage`, … Linux system packages: `apt purge`, `snap remove --purge`, `pacman -Rns`, `dnf remove` shown for you to run with `sudo` |
+
+**What "clean" means.** A plan can contain five kinds of step, all listed before
+you confirm:
+
+1. **Command** — the native uninstall. If it fails, the run stops: leftovers of a
+   tool that refused to uninstall are never deleted.
+2. **Files & folders** — caches, data and configuration, moved to the Trash by
+   default. Locations found through a stable identifier (a bundle ID, a tool's
+   own folder) are pre-ticked; name-based guesses, config files that may hold
+   tokens, and anything that may be your own work (`~/go/src`, Xcode Archives, Docker
+   volumes) start **unticked** with a warning.
+3. **Shell configuration** — the exact lines the installer added to `~/.zshrc`,
+   `~/.bashrc`, `~/.profile`, fish config and friends (`. "$HOME/.cargo/env"`,
+   `export NVM_DIR=…`, the `# >>> conda initialize >>>` block). The file is
+   backed up next to itself as `*.bersihdisk-<time>.bak` before it is rewritten.
+4. **Windows registry** — leftover uninstall keys; the key is exported to a `.reg`
+   file under `%AppData%\BersihDisk\backups` before it is deleted. Only `HKCU` is
+   changed automatically.
+5. **PATH** — entries of the Windows user `PATH` that point at the removed tool.
+
+**Administrator rights.** BersihDisk never elevates itself. A step that needs it
+(`/usr/local/go`, `/usr/local/share/dotnet`, machine-wide registry keys) is shown
+with the exact command to copy and run yourself, and is reported as *manual*.
+
+**Platform details** — each choice below comes from the vendor's or tool's own
+documentation (see [Research basis](#research-basis)):
+
+| | macOS | Windows | Linux |
 |---|---|---|---|
-| 1 | Node.js | `node_modules` | Default |
-| 2 | Go | `~/go/pkg/mod`, download cache, build cache | Default |
-| 3 | Rust | `target/` (content-filtered), `~/.cargo/registry` | Default |
-| 4 | Gradle | `build/` artifacts (filtered), `~/.gradle/caches` | Default |
-| 5 | Maven | `~/.m2/repository`, `target/` (filtered) | Default |
-| 6 | C / C++ | `CMakeFiles`, `cmake-build-*` | Default |
-| 7 | Python | `__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, virtualenvs | Default |
-| 8 | .NET | `bin/`, `obj/` (Debug/Release/.dll filter) | Default |
-| 9 | Frontend build cache | `.next`, `.nuxt`, `.turbo`, `.vite`, `.parcel-cache`, `.svelte-kit`, `.astro`, `coverage`, `storybook-static` | Default |
-| 10 | Xcode & iOS | DerivedData, iOS DeviceSupport, CoreSimulator caches, SwiftPM `.build` | Default |
-| 11 | Android | `app/build` (multi-segment pattern), `.cxx`, build-cache | Default |
-| 12 | Docker & Buildx | `~/.docker/buildx`, Docker Desktop cache and logs | Default |
-| 13 | Homebrew | `Library/Caches/Homebrew`, `~/.cache/homebrew` | Default |
-| 14 | PHP & Composer | `~/.composer/cache`, `~/.cache/composer` | Default |
-| 15 | Python package cache | pip / uv / Poetry wheel caches, `~/.conda/pkgs` | Default |
-| 16 | Flutter & Pub | `~/.pub-cache/hosted`, engine cache, `.dart_tool` | Default |
-| 17 | Terraform | `.terraform/`, plugin cache | Default |
-| 18 | .NET NuGet | `~/.nuget/packages`, HTTP cache | Default |
-| 19 | JetBrains | IDE index caches | Default |
-| 20 | Electron & browser cache | electron, npm `_cacache`/`_npx`, yarn, pnpm, Playwright, Cypress | **opt-in** |
-| 21 | Temp & system cache | `~/.cache`, `%TEMP%`, CrashDumps | **opt-in** |
-| 22 | AI / ML cache | HuggingFace, PyTorch, Ollama, Whisper | **opt-in** |
-| 23 | Ruby & Gems | `~/.gem`, Bundler cache | **opt-in** |
-| 24 | Emulators & simulators | Android AVDs, iOS Simulator data | **opt-in** |
+| App list | `.app` bundles, bundle ID via `plutil` | Uninstall registry keys in **three** places: `HKLM`, `HKLM\WOW6432Node`, and `HKCU` (per-user installs such as Chrome, Teams, Zoom) — not `Win32_Product`, which triggers MSI reconfiguration | `$XDG_DATA_HOME/applications` launchers, Flatpak, Snap |
+| Uninstall | move the bundle; Docker's own `uninstall` binary is shown (it asks for a password) | `QuietUninstallString` if present, else `UninstallString`; MSI `/I{GUID}` is rewritten to `/X{GUID}`; run through `start /wait` so UAC prompts normally | `flatpak uninstall --delete-data`; `apt purge` (not `remove`, which keeps config), `snap remove --purge` |
+| Leftovers | `~/Library` locations derived from the bundle ID are exact; name guesses start unticked; **Group Containers are only removed when the group ID is the app's own**, because macOS shares them between apps | `%APPDATA%`, `%LOCALAPPDATA%`, `%PROGRAMDATA%` per vendor docs (VS Code, Docker, Android Studio); registry key backed up to `.reg` first | `$XDG_CONFIG_HOME`, `$XDG_DATA_HOME`, `$XDG_CACHE_HOME`, `$XDG_STATE_HOME` — honoured when the user relocated them, defaults from the XDG spec otherwise |
+| PATH | shell profile lines, backed up | user `PATH` written **directly in the registry**, keeping `REG_EXPAND_SZ`, then broadcast `WM_SETTINGCHANGE` — never `setx`, which truncates at 1024 characters | shell profile lines (`.profile`, `.bashrc`, fish config), backed up |
+| Known trap | deleting `~/Library/Containers/*` fails with *Operation not permitted* even with `sudo` until the app has **Full Disk Access** — BersihDisk detects this and says so | Store/MSIX apps are not in the Uninstall registry at all | `dnf`'s "user installed" list can contain everything after a `system-upgrade`; check before removing |
+
+**Platform coverage.** macOS is exercised end to end. The Windows registry and
+Linux launcher code is written against each platform's documented layout and
+covered by unit tests and cross-platform compilation in CI, but has had less
+real-machine use — review the plan before confirming, as always. System packages
+managed by `apt`/`dnf`/`snap` need root and are left to those tools.
+
+## 📚 Research basis
+
+Uninstall and cache locations were checked against vendor documentation and
+community practice rather than guessed. Corrections that came out of it: Cargo's
+home is `%USERPROFILE%\.cargo` on Windows (not `%LocalAppData%`), npm's Windows
+cache is `%LocalAppData%\npm-cache`, Go's is `%LocalAppData%\go-build`, Yarn keeps
+`~/Library/Caches/Yarn` on macOS, the `pip` cache belongs to the pip category, and
+VS Code's clean uninstall also removes `~/.vscode-shared`.
+
+- [Docker Desktop — uninstall](https://docs.docker.com/desktop/uninstall/) (per-OS file lists, the macOS Full Disk Access caveat)
+- [VS Code — uninstall / clean uninstall](https://code.visualstudio.com/docs/setup/uninstall)
+- [conda — uninstalling](https://docs.conda.io/projects/conda/en/latest/user-guide/install/macos.html#uninstalling-anaconda-or-miniconda) (`conda init --reverse --all`, `~/.condarc`, `~/.conda`, `~/.continuum`)
+- [nvm — manual uninstall](https://github.com/nvm-sh/nvm#manual-uninstall), [rustup — self uninstall](https://rust-lang.github.io/rustup/installation/index.html), [Cargo home](https://doc.rust-lang.org/cargo/guide/cargo-home.html)
+- [Homebrew Cask Cookbook — `zap`](https://docs.brew.sh/Cask-Cookbook#stanza-zap) (may remove shared resources; that is why the plan warns)
+- [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir/latest/)
+- [Windows Installer — Uninstall registry key](https://learn.microsoft.com/en-us/windows/win32/msi/uninstall-registry-key), [winget `uninstall`](https://learn.microsoft.com/en-us/windows/package-manager/winget/uninstall), [`Remove-AppxPackage`](https://learn.microsoft.com/en-us/powershell/module/appx/remove-appxpackage)
+- [npm cache defaults](https://docs.npmjs.com/cli/v8/commands/npm-cache/), [Yarn cache](https://classic.yarnpkg.com/lang/en/docs/cli/cache/)
+- Community: Stack Overflow on `UninstallString`/`QuietUninstallString` and the `HKCU` per-user hive, `setx` truncation reports, `pkgutil --forget`, and macOS leftover-cleaner write-ups on Group Containers ownership.
+
+**Deliberately not done:** elevating privileges. `osascript … with administrator
+privileges`, `pkexec` and scripted UAC are exactly the patterns security tools
+flag, and a wrong command as root cannot be undone — so root-only steps are shown
+for you to run.
 
 ## 🚀 Getting started
 
@@ -271,7 +362,8 @@ use"). Assets uploaded to a release always get a digest from GitHub.
 .
 ├── main.go                 window bootstrap (Wails), ldflags-injected version
 ├── app.go                  frontend bindings: DetectDrives, StartScan, StartDelete,
-│                           ListFolder, Reveal, CheckUpdate, StartUpdateDownload, …
+│                           ListPackages, PlanUninstall, StartUninstall, …
+│                           (re-checks every delete against the scan's risk grades)
 ├── VERSION                 single source of truth for the version
 ├── Makefile                run / build / test / release / bump
 ├── assets/                 brand logo (SVG source + PNG renders)
@@ -279,11 +371,14 @@ use"). Assets uploaded to a release always get a digest from GitHub.
 ├── scripts/changelog.sh    Conventional Commits -> CHANGELOG entry
 ├── tools/iconvars/         derives the app-icon variants from assets/logo.png
 └── internal/
+    ├── safety/             risk levels, the hard delete guard, context checks
     ├── rules/              category definitions + matchers (dirNames, homePaths,
-    │                       per-OS content filters) — fully unit tested
+    │                       per-OS content filters, risk hints, project markers)
     ├── drive/              per-platform drive detection (darwin / windows / linux)
-    ├── scanner/            two-phase concurrent scan engine + progress events
-    ├── deleter/            bulk delete (trash / permanent) + progress + cancel
+    ├── scanner/            two-phase concurrent scan engine + risk grading + progress
+    ├── deleter/            bulk delete (trash / permanent), guard, keep-root, cancel
+    ├── uninstall/          providers (package managers, apps, toolchain catalog),
+    │                       plans, execution, profile/PATH/registry cleanup
     ├── browser/            folder listing with recursive sizes
     ├── reveal/             OS handoff: Open (Finder/Explorer), Launch (installer)
     ├── updater/            GitHub Releases check, download with progress, sha256
@@ -295,11 +390,12 @@ use"). Assets uploaded to a release always get a digest from GitHub.
 frontend/src/
 ├── main.tsx / App.tsx      entry + main flow
 ├── backend.ts              Wails binding wrapper + event listeners
-├── categories/ drives/ scan/ results/ update/   feature panels
-├── common/                 Icon (SVG engine), Toast, ThemeSwitch
+├── categories/ drives/ scan/ results/ uninstall/ update/   feature panels
+├── common/                 Icon (SVG engine), Toast, ThemeSwitch, ModeNav,
+│                           RiskBadge / RiskAck (shared warning components)
 ├── hooks/                  useTheme, useAppliedSettings
 ├── i18n/                   lookup + interpolation, locales/id.ts, locales/en.ts
-├── lib/                    types, format, brandIcons, appIcons, settings, links
+├── lib/                    types, format, risk, brandIcons, appIcons, settings, links
 └── styles/                 tokens, layout, cards, panels, overlays, utils
 ```
 
@@ -308,19 +404,64 @@ frontend/src/
 items → confirmation modal (trash or permanent) → `StartDelete` →
 `delete:progress` / `delete:finished` → summary toast.
 
+**Uninstall flow:** `ListPackages` (providers run concurrently) → pick one →
+`PlanUninstall` (steps, sizes, warnings; stored server-side) → review and
+acknowledge → `StartUninstall` with step IDs → `uninstall:progress` /
+`uninstall:finished`.
+
 ## 🔒 Safety
 
-A tool that deletes files has to earn trust, so the design keeps the destructive
-path narrow:
+A tool that deletes files has to earn trust, so the destructive path is narrow,
+and the *backend* — not the UI — enforces every rule below.
+
+**Every result carries a grade**, decided in Go and shown with its reason:
+
+| Grade | Meaning | What the app does |
+|---|---|---|
+| **Safe** | regenerated automatically, nothing lost | pre-ticked, one confirmation |
+| **Caution** | costs a re-download, may hold something unique (`~/.m2/repository`, a virtualenv, a folder with no project file beside it) | never ticked automatically, listed with reasons, needs an "I understand" checkbox |
+| **Danger** | can break an installed app or tool, or destroy data (a global `node_modules`, anything inside a `.app`, an editor extension, `nvm`/`pyenv` installs, `~/.gem`, simulator devices) | as caution, plus **Trash only** — Permanent is disabled |
+| **Protected** | never deleted: filesystem roots, the home folder, `Documents`/`Desktop`/…, `~/.ssh`, `~/.aws`, `~/.kube`, `/System`, `/usr/bin`, `C:\Windows`, `Program Files` | shown greyed out, checkbox disabled, refused again by the deleter |
+
+How the grade is produced (`internal/safety`, `internal/rules`):
+
+- **Hard guard** — a path is checked as written *and* after resolving symlinks, so
+  a link into `~/.ssh` cannot smuggle it in. The deleter calls the same guard, so
+  even a bug elsewhere cannot delete a protected path.
+- **Context** — the surroundings of a match matter more than its name: inside an
+  app bundle, an editor's `extensions/`, a version manager, a `lib/node_modules`
+  global folder, or a package-manager prefix (`/opt/homebrew`, `/usr/local`).
+- **Project markers** — `node_modules` needs `package.json` beside it, `target/`
+  needs `Cargo.toml` or `pom.xml`, `bin/obj` need a `.csproj`, and so on. Without
+  one the item is *caution*, not silently deleted.
+- **Rule hints** — specific locations are raised above their category
+  (`.m2/repository`, `~/.gem`, `.android/avd`, buildx builders, `.pub-cache/hosted`).
+- **Server-side enforcement** — `StartDelete` accepts only paths from the last
+  scan, re-derives their grade, refuses protected ones, and refuses anything
+  above safe unless the acknowledgement came with the request. Danger forces the
+  Trash whatever mode was asked for.
+- **Containers are emptied, not removed** — `%TEMP%` and `~/.cache` keep the
+  folder itself; entries that are in use are kept and reported.
+- **Narrow paths** — the Windows Docker rule targets only `Docker\log` (the WSL disk
+  image with every image and volume lives beside it); JetBrains targets one folder
+  per IDE and never Toolbox, where the installed IDEs live.
+
+Still true from the start:
 
 - The scanner **never deletes**. Deletion accepts only explicit paths produced by a scan.
-- A skip-list protects system locations on every platform: `.Trash`,
+- A skip-list keeps the walker out of system locations on every platform: `.Trash`,
   `$Recycle.Bin`, `System Volume Information`, `Windows`, `Program Files`,
   `Library`, `/usr`, `/etc`, and friends.
-- Symlinks are never followed — `WalkDir` does not cross mounts or link targets.
-- Generic directory names require a content filter before they can match.
+- Symlinks are never followed — the walk does not cross mounts or link targets.
+- Generic directory names (`build`, `target`, `bin`, `coverage`) require a content filter.
 - Permanent mode always shows a red warning modal with a second confirmation.
-- Risky categories (AI model weights, emulator images, browser caches, temp) are opt-in.
+- Categories that cost a large re-download or are unrecoverable are opt-in.
+
+**Uninstaller safety** follows the same guard plus its own rules: it runs only
+steps of a plan it stored itself (the UI sends step IDs, never commands or paths),
+commands run without a shell from argument lists built by the backend, a failed
+command stops the run, edited shell profiles and exported registry keys are
+backed up first, and administrator-only steps are shown, never run.
 
 ## 🕸 Privacy
 
@@ -352,11 +493,14 @@ go test ./internal/... -v
 go vet ./...
 ```
 
-34 unit tests cover the rules matchers (including the content filters that keep
-source directories safe), drive detection, the two-phase scanner, the deleter,
-folder browsing, and the updater. The safety-critical path — what may be
-matched — is where the test density is highest, and new cleanup categories are
-expected to arrive with matcher tests.
+87 unit tests cover the safety guard (protected paths, symlink escapes, context
+grading), the rules matchers and risk hints, the two-phase scanner, the deleter
+(guard, keep-root), server-side delete vetting, the uninstaller (parsers for every
+package manager's real output, shell-profile cleaning, plan building and
+execution in a sandboxed `$HOME`, abort-on-failure, acknowledgement and
+admin-only handling, catalog sanity) and the updater. The safety-critical path —
+what may be matched and what may be deleted — is where the test density is
+highest, and new categories and catalog entries are expected to arrive with tests.
 
 ## 🩺 Troubleshooting
 

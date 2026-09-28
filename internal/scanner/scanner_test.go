@@ -367,3 +367,31 @@ func TestSizesIgnoreHardLinks(t *testing.T) {
 		t.Errorf("size = %d, want 100 (hard link excluded)", got)
 	}
 }
+
+func TestScanGradesItems(t *testing.T) {
+	root := t.TempDir()
+	// A real project (package.json beside node_modules) and a loose folder without one.
+	mk(t, filepath.Join(root, "app", "node_modules", "x"), "i.js", "x")
+	mk(t, filepath.Join(root, "app"), "package.json", "{}")
+	mk(t, filepath.Join(root, "loose", "node_modules", "x"), "i.js", "x")
+	// A dependency folder inside an app bundle belongs to the installed app.
+	mk(t, filepath.Join(root, "Tool.app", "Contents", "Resources", "node_modules", "x"), "i.js", "x")
+
+	res := New(func(Progress) {}).Scan([]string{root}, []string{rules.CatNodeJS})
+	levels := map[string]Item{}
+	for _, it := range res.Items {
+		levels[it.Path] = it
+	}
+	app := levels[filepath.Join(root, "app", "node_modules")]
+	if app.Level != "safe" {
+		t.Errorf("project node_modules level = %q (%v), want safe", app.Level, app.Reasons)
+	}
+	loose := levels[filepath.Join(root, "loose", "node_modules")]
+	if loose.Level != "caution" || len(loose.Reasons) == 0 || loose.Reasons[0] != "noProjectFile" {
+		t.Errorf("loose node_modules = %q %v, want caution/noProjectFile", loose.Level, loose.Reasons)
+	}
+	bundle, found := levels[filepath.Join(root, "Tool.app", "Contents", "Resources", "node_modules")]
+	if !found || bundle.Level != "danger" || bundle.Reasons[0] != "appBundle" {
+		t.Errorf("app-bundle node_modules = %+v (found %v), want danger/appBundle", bundle, found)
+	}
+}

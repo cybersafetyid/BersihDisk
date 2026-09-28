@@ -1,0 +1,67 @@
+/* safety.css — everything that warns: risk badges, banners, the confirmation
+   panel and the acknowledgement checkbox. Shared by the cleaner and uninstaller. */
+
+/* Level colours in one place: caution = amber, danger = red, blocked = grey. */
+.risk-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  flex-shrink: 0;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px;
+  padding: 3px 8px; border-radius: 99px;
+  cursor: help;
+}
+.risk-caution { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+.risk-danger { background: var(--danger-bg); color: var(--danger); }
+.risk-blocked { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+
+.badge-caution { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
+.badge-caution svg { vertical-align: -1px; }
+
+/* Rows: a coloured edge makes a risky result visible before reading it. */
+.row-caution { box-shadow: inset 3px 0 0 var(--warning); }
+.row-danger { box-shadow: inset 3px 0 0 var(--danger); }
+.row-blocked { opacity: 0.6; box-shadow: inset 3px 0 0 var(--border); cursor: not-allowed; }
+.row-blocked input { cursor: not-allowed; }
+
+.risk-banner {
+  display: flex; align-items: flex-start; gap: 9px;
+  margin: 0 0 12px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  color: var(--warning);
+  font-size: 13px; line-height: 1.5;
+}
+.risk-banner svg { flex-shrink: 0; margin-top: 2px; }
+.results-panel > .risk-banner { margin: 12px 16px 0; }
+
+/* Confirmation dialog: what is risky in the selection, and why. */
+.risk-panel {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+}
+.risk-panel.risk-danger {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+  background: var(--danger-bg);
+}
+.risk-panel-title { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; margin-bottom: 8px; }
+.risk-panel.risk-caution .risk-panel-title { color: var(--warning); }
+.risk-panel.risk-danger .risk-panel-title { color: var(--danger); }
+.risk-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.risk-list-head { display: flex; align-items: center; gap: 8px; }
+.risk-list-path { font-family: ui-monospace, monospace; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.risk-list-why { font-size: 12px; color: var(--text-muted); margin: 2px 0 0 2px; line-height: 1.45; }
+
+.risk-ack {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin-top: 16px;
+  font-size: 13px; line-height: 1.45;
+  cursor: pointer;
+}
+.risk-ack input { margin-top: 3px; cursor: pointer; }
+.risk-ack.danger { color: var(--danger); font-weight: 700; }
+
+.mode-card:disabled { opacity: 0.5; cursor: not-allowed; }
+.mode-card:disabled:hover { border-color: var(--border); }

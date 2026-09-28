@@ -23,6 +23,14 @@ import {
   siNuget,
   siJetbrains,
   siVite,
+  siBun,
+  siDeno,
+  siPnpm,
+  siPoetry,
+  siAstral,
+  siComposer,
+  siRuby,
+  siOpenjdk,
 } from "simple-icons";
 
 export const brandIcons: Record<string, { path: string; title: string }> = {
@@ -48,4 +56,12 @@ export const brandIcons: Record<string, { path: string; title: string }> = {
   nuget: siNuget,
   jetbrains: siJetbrains,
   vite: siVite,
+  bun: siBun,
+  deno: siDeno,
+  pnpm: siPnpm,
+  poetry: siPoetry,
+  astral: siAstral,
+  composer: siComposer,
+  ruby: siRuby,
+  openjdk: siOpenjdk,
 };

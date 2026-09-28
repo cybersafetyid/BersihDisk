@@ -39,13 +39,14 @@ export function CategoryPanel({ categories, selected, onToggle, onReplace }: Pro
     }
   };
 
-  // A category "has a note" when the locale defines a risk text for it.
-  const riskOf = (id: string) => {
-    const risk = t(`categories.${id}.risk`);
-    return risk !== `categories.${id}.risk` ? risk : "";
+  // A category "has a note" when the backend rates any of its locations above safe.
+  const riskOf = (c: CategoryUI) => {
+    if (c.risk === "safe") return "";
+    const risk = t(`categories.${c.id}.risk`);
+    return risk !== `categories.${c.id}.risk` ? risk : t("safety.reason.categoryNote");
   };
   const allIds = new Set(categories.map((c) => c.id));
-  const noNoteIds = new Set(categories.filter((c) => !riskOf(c.id)).map((c) => c.id));
+  const noNoteIds = new Set(categories.filter((c) => c.risk === "safe").map((c) => c.id));
   const sameAs = (ids: Set<string>) => ids.size === selected.size && [...ids].every((id) => selected.has(id));
 
   return (
@@ -80,7 +81,7 @@ export function CategoryPanel({ categories, selected, onToggle, onReplace }: Pro
         {categories.map((c, i) => {
           const active = selected.has(c.id);
           const desc = t(`categories.${c.id}.desc`);
-          const risk = riskOf(c.id);
+          const risk = riskOf(c);
           return (
             <button
               key={c.id}
@@ -101,7 +102,7 @@ export function CategoryPanel({ categories, selected, onToggle, onReplace }: Pro
               <div className="category-badges">
                 {c.optIn && <span className="badge badge-optional">{t("category.optional")}</span>}
                 {risk && (
-                  <span className="badge badge-risk" title={risk}>
+                  <span className={`badge badge-${c.risk === "danger" ? "risk" : "caution"}`} title={risk}>
                     <Icon name="triangle-alert" size={11} /> {t("category.hasNote")}
                   </span>
                 )}

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"bersihdisk/internal/rules"
+	"bersihdisk/internal/safety"
 )
 
 // Item is one found target directory.
@@ -25,6 +26,12 @@ type Item struct {
 	// NestedIn is the path of another item that contains this one, meaning its
 	// space is already counted there.
 	NestedIn string `json:"nestedIn,omitempty"`
+	// Level says how risky deleting the item is; Reasons are the codes behind it.
+	// A blocked item is shown but can never be deleted or counted as freeable.
+	Level   safety.Level `json:"level"`
+	Reasons []string     `json:"reasons,omitempty"`
+	// KeepRoot means deleting empties the folder instead of removing it.
+	KeepRoot bool `json:"keepRoot,omitempty"`
 }
 
 // Progress is a scan progress event sent to the UI.
@@ -516,8 +523,7 @@ func (s *Scanner) Scan(roots []string, ruleIDs []string) Result {
 		}
 		if homeInRoot {
 			for _, r := range active {
-				for _, hp := range r.HomePaths() {
-					abs := rules.HomeRelToAbs(home, hp)
+				for _, abs := range r.ExpandHome(home) {
 					st, serr := os.Lstat(abs)
 					if serr != nil {
 						continue
@@ -655,12 +661,37 @@ func (s *Scanner) Scan(roots []string, ruleIDs []string) Result {
 		})
 	stopMeasureHeartbeat()
 
-	return finalize(items, int(skipped.Load()), s.isClosed())
+	return finalize(assessAll(items), int(skipped.Load()), s.isClosed())
+}
+
+// assessAll grades every measured item with its category's rules. It runs once
+// over the final list, so the marker check (one directory read) costs nothing
+// during the walk.
+func assessAll(items []Item) []Item {
+	byID := map[string]*rules.Rule{}
+	for i := range items {
+		it := &items[i]
+		if it.Path == "" {
+			continue
+		}
+		r, ok := byID[it.Category]
+		if !ok {
+			r = rules.ByID(it.Category)
+			byID[it.Category] = r
+		}
+		if r == nil {
+			continue
+		}
+		a := r.Assess(it.Path)
+		it.Level, it.Reasons, it.KeepRoot = a.Level, a.Reasons, r.KeepRoot && a.Level != safety.Blocked
+	}
+	return items
 }
 
 // finalize drops empty items, marks nested ones, sorts largest first and totals
 // the result. Nested items are excluded from the total because the parent that
-// contains them already accounts for the same bytes.
+// contains them already accounts for the same bytes, and so are blocked ones:
+// they can never be freed.
 func finalize(items []Item, dirsSkipped int, partial bool) Result {
 	final := make([]Item, 0, len(items))
 	for _, it := range items {
@@ -678,7 +709,7 @@ func finalize(items []Item, dirsSkipped int, partial bool) Result {
 
 	var total int64
 	for _, it := range final {
-		if it.NestedIn == "" {
+		if it.NestedIn == "" && it.Level != safety.Blocked {
 			total += it.Size
 		}
 	}

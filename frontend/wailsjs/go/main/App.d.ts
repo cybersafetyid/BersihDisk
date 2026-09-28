@@ -3,9 +3,12 @@
 import {main} from '../models';
 import {updater} from '../models';
 import {browser} from '../models';
+import {uninstall} from '../models';
 import {sysinfo} from '../models';
 
 export function AppDetails():Promise<main.AppInstall>;
+
+export function AppIcon(arg1:string):Promise<string>;
 
 export function AppIconSupported():Promise<boolean>;
 
@@ -14,6 +17,8 @@ export function AppInfo():Promise<Record<string, any>>;
 export function CancelDelete():Promise<void>;
 
 export function CancelScan():Promise<void>;
+
+export function CancelUninstall():Promise<void>;
 
 export function CancelUpdate():Promise<void>;
 
@@ -29,9 +34,13 @@ export function ListCategories():Promise<Array<main.CategoryUI>>;
 
 export function ListFolder(arg1:string):Promise<Array<browser.Entry>>;
 
+export function ListPackages():Promise<uninstall.ListResult>;
+
 export function MeasurePaths(arg1:Array<string>):Promise<Array<number>>;
 
 export function OpenLink(arg1:string):Promise<void>;
+
+export function PlanUninstall(arg1:string):Promise<uninstall.Plan>;
 
 export function Reveal(arg1:string):Promise<void>;
 
@@ -40,6 +49,8 @@ export function SetAppIcon(arg1:string):Promise<void>;
 export function StartDelete(arg1:main.DeleteRequest):Promise<string>;
 
 export function StartScan(arg1:main.ScanRequest):Promise<string>;
+
+export function StartUninstall(arg1:uninstall.Request):Promise<string>;
 
 export function StartUpdateDownload(arg1:string,arg2:string):Promise<string>;
 

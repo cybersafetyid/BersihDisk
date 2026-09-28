@@ -6,7 +6,9 @@ import { DriveSelector } from "./drives/DriveSelector";
 import { CategoryPanel } from "./categories/CategoryPanel";
 import { ScanProgressView } from "./scan/ScanProgress";
 import { ResultsPanel } from "./results/ResultsPanel";
-import { ConfirmModal, type DeleteMode } from "./results/ConfirmModal";
+import { ConfirmModal, type DeleteMode, type RiskEntry } from "./results/ConfirmModal";
+import { UninstallPage } from "./uninstall/UninstallPage";
+import { ModeNav } from "./common/ModeNav";
 import { DeleteProgressView } from "./results/DeleteProgress";
 import { ThemeSwitch } from "./common/ThemeSwitch";
 import { UpdateControl } from "./update/UpdateControl";
@@ -20,6 +22,7 @@ import { useAppliedSettings } from "./hooks/useAppliedSettings";
 import { useI18n } from "./i18n/i18n";
 import { formatSize, formatNumber } from "./lib/format";
 import { isInside } from "./lib/paths";
+import { itemFor } from "./lib/risk";
 import * as api from "./backend";
 import type { DriveUI, CategoryUI, ScanItem, ScanResult, ScanProgress, DeleteProgress } from "./lib/types";
 
@@ -44,7 +47,7 @@ function resized(r: ScanResult, sizes: Map<string, number>): ScanResult {
   return { ...r, ...tally(items) };
 }
 
-type Stage = "select" | "results" | "delete" | "settings";
+type Stage = "select" | "results" | "delete" | "settings" | "uninstall";
 
 export default function App() {
   const settings = useAppliedSettings();
@@ -124,9 +127,10 @@ export default function App() {
       setResult(r);
       // A nested item is removed together with the item containing it, so it
       // starts unchecked rather than promising the same bytes twice.
+      // Only plainly safe items start ticked; risky and protected ones are the user's call.
       const paths = new Set(r.items.map((i) => i.path));
       setSelectedItems(
-        new Set(r.items.filter((i) => !i.nestedIn || !paths.has(i.nestedIn)).map((i) => i.path)),
+        new Set(r.items.filter((i) => i.level === "safe" && (!i.nestedIn || !paths.has(i.nestedIn))).map((i) => i.path)),
       );
       setKnownSizes(new Map(r.items.map((i) => [i.path, i.size])));
       setScanProgress(null);
@@ -161,7 +165,9 @@ export default function App() {
       // Free space changed; refresh the drive cards.
       api.detectDrives().then(setDrives).catch(() => {});
       // Name the first failures so the user can see which paths stayed and why.
-      const failures = (r.failures ?? []).slice(0, 3).map((f) => `${f.path}: ${f.message}`);
+      const failures = (r.failures ?? []).slice(0, 3).map(
+        (f) => `${f.path}: ${f.message}${f.hint ? ` — ${t(`safety.hint.${f.hint}`)}` : ""}`,
+      );
       const more = r.failed > failures.length ? ` (+${r.failed - failures.length})` : "";
       notify(
         t(lastMode.current === "trash" ? "toast.trashResult" : "toast.deleteResult", { ok: formatNumber(r.ok), size: formatSize(r.bytes) }),
@@ -215,18 +221,34 @@ export default function App() {
     return total;
   }, [selectedItems, knownSizes]);
 
-  const confirmDelete = () => {
+  // What the confirmation dialog must warn about: every selected location the
+  // backend rated above safe (a folder picked inside a result inherits its item's level).
+  const risks = useMemo<RiskEntry[]>(() => {
+    if (!result) return [];
+    const out: RiskEntry[] = [];
+    for (const path of selectedItems) {
+      const it = itemFor(result.items, path);
+      if (!it || (it.level !== "caution" && it.level !== "danger")) continue;
+      const note = t(`categories.${it.category}.risk`);
+      out.push({ path, level: it.level, reasons: it.reasons, note: note !== `categories.${it.category}.risk` ? note : undefined });
+    }
+    return out;
+  }, [result, selectedItems, t]);
+
+  const confirmDelete = (mode: DeleteMode, acknowledged: boolean) => {
     const paths = [...selectedItems];
-    lastMode.current = deleteMode;
+    lastMode.current = mode;
     lastPaths.current = paths;
     setConfirmOpen(false);
     setStage("delete");
     setDeleteProgress({ done: 0, total: paths.length, bytes: 0, path: "" });
-    api.startDelete({ paths, sizes: paths.map((x) => knownSizes.get(x) ?? 0), mode: deleteMode });
+    api.startDelete({ paths, sizes: paths.map((x) => knownSizes.get(x) ?? 0), mode, acknowledged });
   };
 
   const canScan = selectedDrives.size > 0 && selectedCategories.size > 0 && stage === "select";
   const selectedCount = selectedItems.size;
+
+  const goClean = () => setStage(result ? "results" : "select");
 
   const openSettings = (next: Section) => {
     setSection(next);
@@ -245,6 +267,10 @@ export default function App() {
             <p>{t("app.tagline")}</p>
           </div>
         </div>
+        <ModeNav
+          mode={stage === "uninstall" ? "uninstall" : "clean"}
+          onMode={(m) => (m === "uninstall" ? setStage("uninstall") : goClean())}
+        />
         <div className="header-actions">
           <ThemeSwitch />
           <UpdateControl onNotify={notify} auto={settings.autoUpdate} openSignal={updateSignal} />
@@ -268,6 +294,8 @@ export default function App() {
             iconSupported={iconSupported}
             onCheckUpdate={() => setUpdateSignal((n) => n + 1)}
           />
+        ) : stage === "uninstall" ? (
+          <UninstallPage onNotify={notify} onFreed={() => api.detectDrives().then(setDrives).catch(() => {})} />
         ) : stage === "select" && (
           <section className="fade-in">
             <h2 className="section-title">{t("drive.step")}</h2>
@@ -342,6 +370,7 @@ export default function App() {
           onConfirm={confirmDelete}
           onCancel={() => setConfirmOpen(false)}
           busy={false}
+          risks={risks}
         />
       )}
       {stage === "delete" && deleteProgress && <DeleteProgressView progress={deleteProgress} onCancel={() => api.cancelDelete()} />}

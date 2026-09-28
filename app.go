@@ -19,8 +19,10 @@ import (
 	"bersihdisk/internal/drive"
 	"bersihdisk/internal/reveal"
 	"bersihdisk/internal/rules"
+	"bersihdisk/internal/safety"
 	"bersihdisk/internal/scanner"
 	"bersihdisk/internal/sysinfo"
+	"bersihdisk/internal/uninstall"
 	"bersihdisk/internal/updater"
 	"bersihdisk/internal/winstate"
 )
@@ -31,6 +33,9 @@ type CategoryUI struct {
 	ID    string `json:"id"`
 	Icon  string `json:"icon"`
 	OptIn bool   `json:"optIn"`
+	// Risk is the worst level any location of the category can reach; the picker
+	// shows a warning for anything above "safe".
+	Risk safety.Level `json:"risk"`
 }
 
 // DriveUI is a drive for the selection cards in the frontend.
@@ -54,6 +59,9 @@ type DeleteRequest struct {
 	Paths []string `json:"paths"`
 	Sizes []int64  `json:"sizes"`
 	Mode  string   `json:"mode"`
+	// Acknowledged is true when the user ticked "I understand" in the confirmation
+	// dialog. Anything above "safe" is refused without it.
+	Acknowledged bool `json:"acknowledged"`
 }
 
 // App is the main application struct bound to the frontend.
@@ -64,13 +72,15 @@ type App struct {
 	scanner      *scanner.Scanner
 	deleter      *deleter.Deleter
 	updateCancel context.CancelFunc
+	uninstaller  *uninstall.Inventory
+	uninstallRun context.CancelFunc
 
 	// The frontend is not trusted with arbitrary paths: deletion is limited to the
 	// last scan's items (and what lies inside them), and only the file this app
 	// downloaded can be installed.
-	win        winstate.State // window state loaded at launch, updated on close
-	scanPaths  []string
-	release    updater.Info // last CheckUpdate result; the download URL and digest come from here
+	win        winstate.State          // window state loaded at launch, updated on close
+	scanItems  map[string]scanner.Item // last scan result by cleaned path
+	release    updater.Info            // last CheckUpdate result; the download URL and digest come from here
 	updateFile string
 }
 
@@ -83,17 +93,26 @@ func isInside(child, parent string) bool {
 	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
 }
 
-// deletable reports whether path belongs to the last scan result.
-func (a *App) deletable(path string) bool {
+// itemFor returns the scan-result item that path is, or lies inside (the
+// innermost one), and whether there is one.
+func (a *App) itemFor(path string) (scanner.Item, bool) {
 	path = filepath.Clean(path)
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	for _, root := range a.scanPaths {
-		if isInside(path, root) {
-			return true
+	var best scanner.Item
+	found := false
+	for root, it := range a.scanItems {
+		if isInside(path, root) && (!found || len(root) > len(best.Path)) {
+			best, found = it, true
 		}
 	}
-	return false
+	return best, found
+}
+
+// deletable reports whether path belongs to the last scan result.
+func (a *App) deletable(path string) bool {
+	_, ok := a.itemFor(path)
+	return ok
 }
 
 // NewApp creates the App instance.
@@ -160,6 +179,7 @@ func (a *App) ListCategories() []CategoryUI {
 			ID:    r.ID,
 			Icon:  r.Icon,
 			OptIn: r.OptIn,
+			Risk:  r.RiskLevel(),
 		})
 	}
 	return out
@@ -215,9 +235,9 @@ func (a *App) StartScan(req ScanRequest) string {
 		current := a.scanner == s
 		if current {
 			a.scanner = nil
-			a.scanPaths = a.scanPaths[:0]
+			a.scanItems = make(map[string]scanner.Item, len(res.Items))
 			for _, it := range res.Items {
-				a.scanPaths = append(a.scanPaths, filepath.Clean(it.Path))
+				a.scanItems[filepath.Clean(it.Path)] = it
 			}
 		}
 		a.mu.Unlock()
@@ -239,8 +259,48 @@ func (a *App) CancelScan() {
 	}
 }
 
+// vetDelete decides what of a delete request may run: the items to hand to the
+// deleter, the paths refused with why, and the mode to use.
+func (a *App) vetDelete(req DeleteRequest) (items []deleter.Item, denied []deleter.Failure, mode string) {
+	worst := safety.Safe
+	for i, p := range req.Paths {
+		it, ok := a.itemFor(p)
+		switch {
+		case !ok:
+			denied = append(denied, deleter.Failure{Path: p, Message: "not part of the scan result"})
+			continue
+		case it.Level == safety.Blocked:
+			denied = append(denied, deleter.Failure{Path: p, Message: "protected location (" + strings.Join(it.Reasons, ", ") + ")"})
+			continue
+		}
+		worst = safety.Worse(worst, it.Level)
+		var size int64
+		if i < len(req.Sizes) {
+			size = req.Sizes[i]
+		}
+		// KeepRoot applies to the container itself, not to a child chosen inside it.
+		items = append(items, deleter.Item{Path: p, Size: size, KeepRoot: it.KeepRoot && filepath.Clean(p) == filepath.Clean(it.Path)})
+	}
+	mode = req.Mode
+	if worst == safety.Danger {
+		mode = deleter.ModeTrash
+	}
+	if worst.NeedsAck() && !req.Acknowledged {
+		for _, it := range items {
+			denied = append(denied, deleter.Failure{Path: it.Path, Message: "the risk was not acknowledged"})
+		}
+		items = nil
+	}
+	return items, denied, mode
+}
+
 // StartDelete runs an asynchronous deletion; progress via the "delete:progress"
 // event, result via "delete:finished".
+//
+// The frontend is not trusted to have read the warnings: every path is checked
+// against the scan result and its assessment. A blocked location is refused, and
+// anything above "safe" is refused unless the user acknowledged the risk. Danger
+// items can only go to the Trash, whatever mode was asked for.
 func (a *App) StartDelete(req DeleteRequest) string {
 	a.mu.Lock()
 	if a.deleter != nil {
@@ -253,20 +313,11 @@ func (a *App) StartDelete(req DeleteRequest) string {
 	a.mu.Unlock()
 
 	go func() {
-		items := make([]deleter.Item, 0, len(req.Paths))
-		var denied []deleter.Failure
-		for i, p := range req.Paths {
-			if !a.deletable(p) {
-				denied = append(denied, deleter.Failure{Path: p, Message: "not part of the scan result"})
-				continue
-			}
-			var size int64
-			if i < len(req.Sizes) {
-				size = req.Sizes[i]
-			}
-			items = append(items, deleter.Item{Path: p, Size: size})
+		items, denied, mode := a.vetDelete(req)
+		res := deleter.Result{Failures: []deleter.Failure{}}
+		if len(items) > 0 {
+			res = d.Delete(items, mode)
 		}
-		res := d.Delete(items, req.Mode)
 		res.Failures = append(res.Failures, denied...)
 		res.Failed += len(denied)
 		wailsruntime.EventsEmit(a.ctx, "delete:finished", res)
@@ -429,6 +480,84 @@ func (a *App) SetAppIcon(pngBase64 string) error {
 		return fmt.Errorf("icon data is not valid base64: %w", err)
 	}
 	return appicon.Set(png)
+}
+
+// ---- uninstaller ----
+
+// inventory builds the uninstaller on first use.
+func (a *App) inventory() *uninstall.Inventory {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.uninstaller == nil {
+		a.uninstaller = uninstall.New(
+			uninstall.Host{Env: uninstall.NewEnv(), Run: &uninstall.ExecRunner{}},
+			uninstall.DefaultProviders()...,
+		)
+	}
+	return a.uninstaller
+}
+
+// ListPackages returns every installed app, runtime and package the app knows how
+// to remove. It runs the package managers, so it can take a few seconds.
+func (a *App) ListPackages() uninstall.ListResult {
+	return a.inventory().List(a.ctx)
+}
+
+// AppIcon returns an application's icon as a data URL, or "" when it has none the
+// app can read. The list asks for it lazily, row by row, as rows scroll into view.
+func (a *App) AppIcon(packageID string) string {
+	url, err := a.inventory().Icon(a.ctx, packageID)
+	if err != nil {
+		return ""
+	}
+	return url
+}
+
+// PlanUninstall works out what removing one package would do, without doing it.
+func (a *App) PlanUninstall(packageID string) (uninstall.Plan, error) {
+	return a.inventory().Plan(a.ctx, packageID)
+}
+
+// StartUninstall runs the chosen steps of a plan; progress via "uninstall:progress",
+// result via "uninstall:finished". Only steps of a plan this app produced can run.
+func (a *App) StartUninstall(req uninstall.Request) string {
+	ctx, cancel := context.WithCancel(context.Background())
+	a.mu.Lock()
+	if a.uninstallRun != nil {
+		a.uninstallRun()
+	}
+	a.uninstallRun = cancel
+	a.mu.Unlock()
+
+	go func() {
+		defer cancel()
+		res, err := a.inventory().Execute(ctx, req, func(p uninstall.Progress) {
+			wailsruntime.EventsEmit(a.ctx, "uninstall:progress", p)
+		})
+		out := UninstallOutcome{Result: res}
+		if err != nil {
+			out.Error = err.Error()
+		}
+		wailsruntime.EventsEmit(a.ctx, "uninstall:finished", out)
+	}()
+	return "ok"
+}
+
+// CancelUninstall stops the running uninstall after the current step.
+func (a *App) CancelUninstall() {
+	a.mu.Lock()
+	cancel := a.uninstallRun
+	a.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
+
+// UninstallOutcome is sent on "uninstall:finished": the result, or why the
+// request was refused.
+type UninstallOutcome struct {
+	uninstall.Result
+	Error string `json:"error,omitempty"`
 }
 
 // OpenLink hands a web or mail address to the user's default handler.

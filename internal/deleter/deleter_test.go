@@ -4,6 +4,7 @@ package deleter
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -107,5 +108,55 @@ func TestDeleteTrash(t *testing.T) {
 	}
 	if _, err := os.Stat(a); !os.IsNotExist(err) {
 		t.Error("a should have moved to the trash")
+	}
+}
+
+func TestDeleteRefusesProtectedPaths(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	ssh := filepath.Join(home, ".ssh")
+	if err := os.MkdirAll(ssh, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, p := range []string{ssh, home} {
+		res := New(func(Progress) {}).Delete([]Item{{Path: p, Size: 99}}, ModePermanent)
+		if res.OK != 0 || res.Failed != 1 || res.Bytes != 0 {
+			t.Fatalf("%s: result = %+v, want a refusal and no bytes freed", p, res)
+		}
+		if !strings.Contains(res.Failures[0].Message, "protected") {
+			t.Errorf("failure should explain itself: %q", res.Failures[0].Message)
+		}
+	}
+	if _, err := os.Stat(ssh); err != nil {
+		t.Fatal("the protected folder must survive")
+	}
+}
+
+func TestDeleteKeepRootEmptiesButKeepsFolder(t *testing.T) {
+	cache := filepath.Join(t.TempDir(), "cache")
+	for _, f := range []string{"a/one.bin", "b.bin"} {
+		p := filepath.Join(cache, filepath.FromSlash(f))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, make([]byte, 4096), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	res := New(func(Progress) {}).Delete([]Item{{Path: cache, Size: 8192, KeepRoot: true}}, ModePermanent)
+	if res.OK != 1 || res.Failed != 0 {
+		t.Fatalf("result = %+v", res)
+	}
+	ents, err := os.ReadDir(cache)
+	if err != nil {
+		t.Fatal("the container folder itself must remain")
+	}
+	if len(ents) != 0 {
+		t.Errorf("%d entries left", len(ents))
+	}
+	if res.Bytes <= 0 {
+		t.Errorf("freed = %d, want > 0", res.Bytes)
 	}
 }

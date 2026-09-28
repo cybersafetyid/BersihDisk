@@ -5,4 +5,6 @@
 @import "./panels.css";
 @import "./settings.css";
 @import "./overlays.css";
+@import "./safety.css";
+@import "./uninstall.css";
 @import "./utils.css";

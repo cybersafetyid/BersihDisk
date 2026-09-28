@@ -6,6 +6,10 @@ export function AppDetails() {
   return window['go']['main']['App']['AppDetails']();
 }
 
+export function AppIcon(arg1) {
+  return window['go']['main']['App']['AppIcon'](arg1);
+}
+
 export function AppIconSupported() {
   return window['go']['main']['App']['AppIconSupported']();
 }
@@ -20,6 +24,10 @@ export function CancelDelete() {
 
 export function CancelScan() {
   return window['go']['main']['App']['CancelScan']();
+}
+
+export function CancelUninstall() {
+  return window['go']['main']['App']['CancelUninstall']();
 }
 
 export function CancelUpdate() {
@@ -50,12 +58,20 @@ export function ListFolder(arg1) {
   return window['go']['main']['App']['ListFolder'](arg1);
 }
 
+export function ListPackages() {
+  return window['go']['main']['App']['ListPackages']();
+}
+
 export function MeasurePaths(arg1) {
   return window['go']['main']['App']['MeasurePaths'](arg1);
 }
 
 export function OpenLink(arg1) {
   return window['go']['main']['App']['OpenLink'](arg1);
+}
+
+export function PlanUninstall(arg1) {
+  return window['go']['main']['App']['PlanUninstall'](arg1);
 }
 
 export function Reveal(arg1) {
@@ -72,6 +88,10 @@ export function StartDelete(arg1) {
 
 export function StartScan(arg1) {
   return window['go']['main']['App']['StartScan'](arg1);
+}
+
+export function StartUninstall(arg1) {
+  return window['go']['main']['App']['StartUninstall'](arg1);
 }
 
 export function StartUpdateDownload(arg1, arg2) {
