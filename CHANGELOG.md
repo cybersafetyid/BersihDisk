@@ -10,6 +10,12 @@ each release is tagged `vX.Y.Z`.
 
 [Riwayat versi Bahasa Indonesia →](#catatan-versi-bahasa-indonesia)
 
+## [1.0.3] - 2026-09-28
+
+### Added
+
+- add post-delete path re-measurement and enhanced category panel layout options (`3cb2e23`)
+
 ## [1.0.2] - 2026-09-28
 
 ### Fixed
