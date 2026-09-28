@@ -1,0 +1,130 @@
+name: Release
+
+# Builds and packages BersihDisk on macOS, Windows and Linux with
+# scripts/package.sh (the same script as `make package`), then attaches every
+# artifact to the GitHub release with scripts/publish.sh (`make publish`).
+#
+#   • Push a tag vX.Y.Z              → build that tag, create the release
+#   • Run manually (workflow_dispatch) → build `ref`, create or update release `tag`
+#     (re-running replaces the assets; stale ones are pruned)
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to create or update (must equal v + the VERSION file)
+        required: true
+        default: v1.0.0
+      ref:
+        description: Branch, tag or commit to build (default = the selected branch)
+        required: false
+        default: ""
+      update_notes:
+        description: Replace the release notes with the CHANGELOG section
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  package:
+    name: package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    env:
+      REPO: ${{ github.repository }} # baked into the binary: where the in-app updater looks
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-22.04]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Tag must match the VERSION file
+        run: |
+          [ "$TAG" = "v$(tr -d '[:space:]' < VERSION)" ] || {
+            echo "::error::tag $TAG does not match VERSION ($(cat VERSION))"; exit 1; }
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Wails CLI
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev dpkg-dev
+
+      - name: Windows installer tooling
+        if: runner.os == 'Windows'
+        run: choco install nsis -y --no-progress && echo "C:\Program Files (x86)\NSIS" >> "$GITHUB_PATH"
+
+      - name: Frontend dependencies
+        run: npm ci --prefix frontend
+
+      - name: Test
+        run: |
+          (cd frontend && npx tsc --noEmit && npm run build)
+          go test -tags webkit2_41 ./internal/... ./tools/...
+
+      - name: Package
+        run: bash scripts/package.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: |
+            dist/*.dmg
+            dist/*.exe
+            dist/*.zip
+            dist/*.deb
+            dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    name: publish
+    needs: package
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0 # scripts/changelog.sh reads tags and history
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          flags="--prune"
+          [ "${{ inputs.update_notes }}" = "true" ] && flags="$flags --update-notes"
+          bash scripts/publish.sh $flags

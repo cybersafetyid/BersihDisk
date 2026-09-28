@@ -9,9 +9,13 @@
 #   make build-all       — cross-compile for macOS / Windows / Linux
 #   make test            — Go unit tests + frontend typecheck
 #   make bump VER=1.2.3  — set version in VERSION, wails.json, package.json
-#   make release         — bump, build, package artifacts into dist/ + tag
+#   make package         — build + package THIS OS into dist/ (dmg / exe+zip / deb+tar.gz)
+#   make release         — verify, package, then CHANGELOG entry + tag
 #   make changelog       — prepend the CHANGELOG entry built from git commits
-#   make publish         — create the GitHub release with artifacts + notes
+#   make publish         — create/update the GitHub release with everything in dist/
+#
+# CI (.github/workflows) runs scripts/package.sh and scripts/publish.sh — the same
+# scripts behind `make package` and `make publish` — once per operating system.
 # =============================================================================
 
 # ---- Configuration ----------------------------------------------------------
@@ -42,6 +46,12 @@ VERSION       := $(shell cat $(VERSION_FILE) 2>/dev/null || echo 0.0.0)
 REPO          ?= cybersafetyid/BersihDisk
 LDFLAGS       := -X main.appVersion=$(VERSION) -X main.releaseRepo=$(REPO)
 
+# Linux links libwebkit2gtk-4.1 (4.0 is gone from Ubuntu 24.04); scripts/package.sh
+# uses the same tag, so local and CI builds link the same library.
+ifeq ($(shell uname -s),Linux)
+GO_TAGS       := -tags webkit2_41
+endif
+
 # Release artifact directory.
 DIST_DIR      := dist
 
@@ -59,7 +69,7 @@ BUNDLE_ICON   := build/appicon.png
 ICON_VARIANTS := frontend/src/assets/icons
 
 .DEFAULT_GOAL := help
-.PHONY: help run dev build build-darwin build-windows build-linux build-all \
+.PHONY: help run dev build package verify build-darwin build-windows build-linux build-all \
         frontend frontend-dev test test-go test-frontend vet lint fmt tidy \
         check clean distclean bump patch minor major release release-version \
         changelog changelog-preview tag release-notes publish \
@@ -81,7 +91,7 @@ run: build
 ## dev: live-reload development (wails dev)
 dev:
 	@echo "▶ Starting dev mode (hot reload, v$(VERSION))..."
-	$(WAILS) dev -ldflags "$(LDFLAGS)"
+	$(WAILS) dev $(GO_TAGS) -ldflags "$(LDFLAGS)"
 
 ## frontend-dev: run only the Vite dev server (browser, no Wails shell)
 frontend-dev:
@@ -94,13 +104,13 @@ frontend-dev:
 ## build: production build for the current OS
 build:
 	@echo "▶ Building $(APP_NAME) v$(VERSION) for current OS..."
-	$(WAILS) build -ldflags "$(LDFLAGS)" -m
+	$(WAILS) build $(GO_TAGS) -ldflags "$(LDFLAGS)" -m
 	@echo "✔ Built: build/bin/"
 
-## build-darwin: macOS (arm64 + amd64 universal on Apple Silicon)
+## build-darwin: macOS universal binary (arm64 + x86_64), as shipped
 build-darwin:
-	@echo "▶ Building macOS..."
-	$(WAILS) build -platform darwin/$(MAC_ARCH) -ldflags "$(LDFLAGS)" -m
+	@echo "▶ Building macOS universal..."
+	$(WAILS) build -platform darwin/universal -ldflags "$(LDFLAGS)" -m
 	@echo "✔ Built: build/bin/$(APP_NAME).app"
 
 ## build-windows: Windows amd64 (requires CGO + mingw-w64 for the trash lib)
@@ -110,13 +120,13 @@ build-windows:
 	$(WAILS) build -platform windows/amd64 -ldflags "$(LDFLAGS)" -m -nsis
 	@echo "✔ Built: build/bin/ (exe + installer)"
 
-## build-linux: Linux amd64 (requires GTK/webkit dev headers)
+## build-linux: Linux amd64 (requires libgtk-3-dev libwebkit2gtk-4.1-dev)
 build-linux:
 	@echo "▶ Building Linux amd64..."
-	$(WAILS) build -platform linux/amd64 -ldflags "$(LDFLAGS)" -m
+	$(WAILS) build -platform linux/amd64 -tags webkit2_41 -ldflags "$(LDFLAGS)" -m
 	@echo "✔ Built: build/bin/"
 
-## build-all: build for every supported platform (native tools required)
+## build-all: build every platform (cross toolchains required — CI packages each OS natively instead)
 build-all: build-darwin build-windows build-linux
 
 ## frontend: build only the frontend bundle
@@ -127,21 +137,11 @@ frontend:
 install-deps:
 	cd frontend && $(NPM) install
 
-## icons: derive the bundle icon and the in-app icon variants from the brand logo
+## icons: derive the edge-to-edge bundle icon and the in-app icon variants from the brand logo
 icons:
 	@echo "▶ Generating icons from $(LOGO_PNG)..."
 	@test -f $(LOGO_PNG) || { echo "✘ $(LOGO_PNG) is missing"; exit 1; }
-	@tmp=$$(mktemp -d); \
-	if command -v qlmanage >/dev/null 2>&1 && qlmanage -t -s 1024 -o $$tmp $(LOGO_SVG) >/dev/null 2>&1 \
-		&& [ -f $$tmp/$(notdir $(LOGO_SVG)).png ]; then \
-			mv $$tmp/$(notdir $(LOGO_SVG)).png $(BUNDLE_ICON); \
-			echo "✔ $(BUNDLE_ICON) rendered at 1024 from $(LOGO_SVG)"; \
-		else \
-			cp $(LOGO_PNG) $(BUNDLE_ICON); \
-			echo "✔ $(BUNDLE_ICON) copied from $(LOGO_PNG) (no SVG renderer here)"; \
-		fi; \
-	rm -rf $$tmp
-	$(GO) run ./tools/iconvars -src $(LOGO_PNG) -out $(ICON_VARIANTS)
+	$(GO) run ./tools/iconvars -src $(LOGO_PNG) -out $(ICON_VARIANTS) -bundle $(BUNDLE_ICON)
 	@echo "✔ Next: make build (or make run) to ship the new icon"
 
 # =============================================================================
@@ -154,7 +154,7 @@ test: test-go test-frontend
 ## test-go: run Go unit tests with -race
 test-go:
 	@echo "▶ Go tests..."
-	$(GO) test -race ./internal/... ./tools/...
+	$(GO) test -race $(GO_TAGS) ./internal/... ./tools/...
 
 ## test-frontend: TypeScript typecheck
 test-frontend:
@@ -163,7 +163,7 @@ test-frontend:
 
 ## vet: go vet on all packages
 vet:
-	$(GO) vet ./...
+	$(GO) vet $(GO_TAGS) ./...
 
 ## fmt: format all Go files
 fmt:
@@ -173,12 +173,15 @@ fmt:
 lint: vet test-frontend frontend
 	@echo "✔ Lint passed"
 
-## check: full pre-commit verification (fmt check, vet, tests, build)
-check:
+## verify: the CI gate without a build (gofmt, vet, Go tests, frontend typecheck)
+verify:
 	@echo "▶ Checking gofmt..."
 	@test -z "$$(gofmt -l . 2>/dev/null | grep -v node_modules)" || \
 		{ echo "✘ Not gofmt-ed:"; gofmt -l . | grep -v node_modules; exit 1; }
-	$(MAKE) vet test build
+	$(MAKE) --no-print-directory vet test
+
+## check: full pre-commit verification (verify + build)
+check: verify build
 
 ## tidy: go mod tidy
 tidy:
@@ -220,29 +223,12 @@ major:
 # Release & packaging
 # =============================================================================
 
-## release: build + package artifacts, then write the CHANGELOG entry and tag
-release: check build
-	@echo "▶ Packaging release v$(VERSION)..."
-	@mkdir -p $(DIST_DIR)/$(APP_NAME)-v$(VERSION)
-	@if [ -d build/bin/$(APP_NAME).app ]; then \
-		cp -R build/bin/$(APP_NAME).app $(DIST_DIR)/$(APP_NAME)-v$(VERSION)/; \
-		cd $(DIST_DIR) && zip -qry \
-			$(APP_NAME)-v$(VERSION)-macos-$(MAC_ARCH).zip $(APP_NAME)-v$(VERSION)/$(APP_NAME).app; \
-	elif [ -f build/bin/$(APP_NAME).exe ]; then \
-		cp build/bin/$(APP_NAME).exe $(DIST_DIR)/$(APP_NAME)-v$(VERSION)/; \
-		cd $(DIST_DIR) && zip -qry \
-			$(APP_NAME)-v$(VERSION)-windows-amd64.zip $(APP_NAME)-v$(VERSION)/; \
-	else \
-		cp -R build/bin/$(APP_NAME) $(DIST_DIR)/$(APP_NAME)-v$(VERSION)/; \
-		cd $(DIST_DIR) && tar czf \
-			$(APP_NAME)-v$(VERSION)-linux-amd64.tar.gz $(APP_NAME)-v$(VERSION)/; \
-	fi
-	@printf '%s v%s (%s)\nBuilt: %s\n' \
-		"$(APP_TITLE)" "$(VERSION)" "$$(date -u +%Y-%m-%d)" \
-		"$$(ls $(DIST_DIR)/*v$(VERSION)*.zip $(DIST_DIR)/*v$(VERSION)*.tar.gz 2>/dev/null)" \
-		> $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-release-notes.txt
-	@echo "✔ Release ready:"
-	@ls -lh $(DIST_DIR)/ | grep "v$(VERSION)" || true
+## package: build + package THIS OS into dist/ (macOS .dmg, Windows setup .exe + portable .zip, Linux .deb + .tar.gz)
+package:
+	WAILS="$(WAILS)" VERSION="$(VERSION)" REPO="$(REPO)" DIST="$(DIST)" bash scripts/package.sh
+
+## release: verify + package this OS, then write the CHANGELOG entry and tag
+release: verify package
 	@$(MAKE) --no-print-directory release-finalize
 
 ## release-finalize: CHANGELOG entry + git tag + GitHub notes, when history exists
@@ -278,7 +264,7 @@ release-notes:
 		> $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-notes.md
 	@echo "✔ Notes: $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-notes.md"
 
-## publish: push the tag, then create the GitHub release with artifacts + notes
+## publish: push the tag, then create/update the GitHub release from dist/ (PUBLISH_FLAGS=--prune --update-notes)
 publish: release-notes
 	@command -v $(GH) >/dev/null 2>&1 || { echo "✘ $(GH) not found (brew install gh && gh auth login)"; exit 1; }
 	@git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null || \
@@ -306,18 +292,7 @@ publish: release-notes
 		echo "▶ Pushing annotated tag v$(VERSION) to origin"; \
 		$(GIT_PUSH) origin "refs/tags/v$(VERSION)"; \
 	fi
-	@set --; \
-	for f in $(DIST_DIR)/$(APP_NAME)-v$(VERSION)*.zip $(DIST_DIR)/$(APP_NAME)-v$(VERSION)*.tar.gz; do \
-		[ -f "$$f" ] && set -- "$$@" "$$f"; \
-	done; \
-	if [ "$$#" -eq 0 ]; then \
-		echo "✘ No v$(VERSION) artifacts in $(DIST_DIR)/ — run 'make release' first"; exit 1; \
-	fi; \
-	echo "▶ Releasing v$(VERSION) with $$# artifact(s): $$*"; \
-	$(GH) release create "v$(VERSION)" -R $(REPO) --verify-tag \
-		--title "$(APP_TITLE) v$(VERSION)" \
-		--notes-file $(DIST_DIR)/$(APP_NAME)-v$(VERSION)-notes.md "$$@"
-	@echo "✔ Published https://github.com/$(REPO)/releases/tag/v$(VERSION)"
+	@VERSION="$(VERSION)" REPO="$(REPO)" DIST="$(DIST_DIR)" GH="$(GH)" bash scripts/publish.sh $(PUBLISH_FLAGS)
 
 ## release-version: bump to VER=x.y.z then release (one-shot)
 release-version: bump

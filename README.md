@@ -113,16 +113,33 @@ re-download or is unrecoverable.
 ### Download
 
 Grab the latest build for your platform from
-[Releases](https://github.com/cybersafetyid/BersihDisk/releases). Artifact names
-always carry OS and architecture, e.g. `bersihdisk-v1.0.0-macos-arm64.zip`.
+[Releases](https://github.com/cybersafetyid/BersihDisk/releases):
 
-macOS: move the app to `/Applications`; the first launch may need a right-click
-→ *Open* because the build is unsigned. Windows: run the `.exe` installer or
-extract the portable archive. Linux: `chmod +x bersihdisk && ./bersihdisk`.
+| OS | File | Install |
+|---|---|---|
+| macOS (Apple Silicon + Intel) | `bersihdisk-vX.Y.Z-macos-universal.dmg` | open the `.dmg`, drag BersihDisk to *Applications* |
+| Windows 10/11 (x64) | `bersihdisk-vX.Y.Z-windows-x86_64-setup.exe` | run the installer (asks for admin rights) |
+| Windows, no install | `bersihdisk-vX.Y.Z-windows-x86_64-portable.zip` | extract and run `bersihdisk.exe` |
+| Linux (Debian/Ubuntu, x64) | `bersihdisk-vX.Y.Z-linux-x86_64.deb` | `sudo apt install ./bersihdisk-*.deb` |
+| Linux, other distros | `bersihdisk-vX.Y.Z-linux-x86_64.tar.gz` | extract and run `./bersihdisk` |
+
+`bersihdisk-vX.Y.Z-SHA256SUMS.txt` lists a checksum for every file.
+
+The builds are **not code-signed or notarised**. On macOS a file downloaded in a
+browser is quarantined: right-click the app → *Open* the first time (files fetched
+by the in-app updater are not quarantined). On Windows, SmartScreen may show
+"unknown publisher": *More info* → *Run anyway*. Linux needs GTK 3 and
+WebKit2GTK 4.1 (`libgtk-3-0 libwebkit2gtk-4.1-0`, installed by the `.deb`).
 
 ### Build from source
 
-Prerequisites: **Go 1.23+**, **Node.js 18+**, **Wails CLI v2.12+**.
+Prerequisites: **Go 1.23+**, **Node.js 18+**, **Wails CLI v2.12+**, plus per OS:
+
+| OS | Also needed |
+|---|---|
+| macOS | Xcode command line tools (`xcode-select --install`) |
+| Windows | MinGW-w64 gcc (cgo, for the Trash library), [NSIS](https://nsis.sourceforge.io) (`choco install nsis`), Git Bash, `make` (`choco install make`) |
+| Linux | `sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev dpkg-dev` |
 
 ```bash
 git clone https://github.com/cybersafetyid/BersihDisk.git
@@ -140,10 +157,22 @@ make dev             # hot-reload development window
 ### Package a release build
 
 ```bash
-make build      # current OS → build/bin/
-make build-all  # macOS + Windows + Linux
-make release    # check + build + zip into dist/ with release notes
+make build      # current OS → build/bin/ (quick, for testing)
+make package    # current OS → dist/: the installer formats below
+make verify     # what CI runs: gofmt, vet, Go tests, frontend typecheck
 ```
+
+`make package` calls `scripts/package.sh`, which builds and packages **the OS it
+runs on** (Wails cannot cross-compile a cgo app):
+
+| Run on | Output in `dist/` |
+|---|---|
+| macOS | `bersihdisk-vX.Y.Z-macos-universal.dmg` (arm64 + x86_64, ad-hoc signed) |
+| Windows | `…-windows-x86_64-setup.exe` (NSIS) and `…-windows-x86_64-portable.zip` |
+| Linux | `…-linux-x86_64.deb` and `…-linux-x86_64.tar.gz` |
+
+On Windows without `make`, run `bash scripts/package.sh` from Git Bash — it is the
+same script.
 
 ## 🛠 Make targets
 
@@ -152,20 +181,22 @@ make release    # check + build + zip into dist/ with release notes
 | `make run` | build and launch the app |
 | `make dev` | development mode with hot reload |
 | `make build` | production build for the current OS |
-| `make build-all` | cross-compile macOS / Windows / Linux |
+| `make package` | build + package the current OS into `dist/` (dmg / setup.exe + zip / deb + tar.gz) |
+| `make verify` | CI gate: gofmt, vet, tests, typecheck (no build) |
+| `make build-all` | build every platform (needs cross toolchains; CI packages each OS natively) |
 | `make test` | Go unit tests (`-race`) + frontend typecheck |
 | `make check` | full pre-commit gate: fmt, vet, tests, build |
 | `make lint` | vet + typecheck + frontend build |
 | `make fmt` / `make vet` / `make tidy` | Go hygiene |
 | `make bump VER=1.2.3` | set the version in `VERSION`, `wails.json`, `package.json` |
 | `make patch` / `minor` / `major` | semantic version bumps |
-| `make release` | build, package `dist/`, then CHANGELOG entry + `v<version>` tag |
+| `make release` | verify + package, then CHANGELOG entry + `v<version>` tag |
 | `make release-version VER=1.2.3` | bump and release in one step |
 | `make changelog-preview` | print the CHANGELOG entry for the current version |
 | `make changelog` | prepend that entry into `CHANGELOG.md` |
 | `make tag` | create the annotated git tag `v<version>` on HEAD |
 | `make release-notes` | write `dist/bersihdisk-v<version>-notes.md` from the entry |
-| `make publish` | push the tag, then create the GitHub release with artifacts + notes |
+| `make publish` | push the tag, then create/update the GitHub release from `dist/` |
 | `make install-deps` | install frontend dependencies |
 | `make doctor` | verify the toolchain (go, node, wails) |
 | `make install-wails-fix` | build the Go ≥ 1.24 compatible Wails CLI |
@@ -183,14 +214,38 @@ in `build/darwin/Info.plist`. `make bump VER=x.y.z` updates `VERSION`,
 
 ### Publishing an updatable release
 
+**CI/CD (GitHub Actions).** Two workflows in `.github/workflows/`:
+
+- `ci.yml` — every push to `main` and every pull request: gofmt, `go vet`, Go
+  tests and the frontend typecheck on Ubuntu, macOS and Windows.
+- `release.yml` — pushing a tag `vX.Y.Z` (or running the workflow by hand with a
+  `tag`) builds and packages on macOS, Windows and Linux runners with
+  `scripts/package.sh`, then `scripts/publish.sh` creates the release, or updates
+  it in place (`--clobber`) and prunes stale assets.
+
+The workflows only call the repository's own scripts, so a local run produces the
+same artifacts:
+
 ```bash
-make release-version VER=1.1.0   # bump + check + build + package + CHANGELOG + tag
-make publish                     # gh release create v1.1.0 with notes from CHANGELOG
+make release-version VER=1.1.0   # bump + verify + package (this OS) + CHANGELOG + tag
+git push origin main             # then either let CI publish …
+git push origin v1.1.0           #   … by pushing the tag (all three OSes), or
+make publish                     #   … publish what this machine built
 ```
 
-Artifact names must contain the OS (`macos`/`windows`/`linux`) and the
-architecture (`arm64`/`x86_64`) so the updater selects the right asset; when
-GitHub exposes a `digest`, the download is SHA-256 verified automatically.
+**The naming contract.** `scripts/package.sh` names files
+`bersihdisk-vX.Y.Z-<os>-<arch>[-kind].<ext>`; `internal/updater` picks the asset
+whose name has the OS word (`macos`/`windows`/`linux`), the architecture
+(`x86_64`; the macOS build is `universal` and matches both) and the best extension
+(`.dmg` › `.exe` › `.deb`). `TestPickAssetMatchesPackagedNames` fails if the two
+drift apart.
+
+**In-app updates.** The updater downloads only the asset returned by the update
+check, from `github.com`/`githubusercontent.com` over HTTPS (every redirect is
+checked), and refuses to install unless GitHub's SHA-256 `digest` for that asset
+matches. It then opens the installer: the `.dmg` on macOS, the NSIS installer on
+Windows (with the UAC prompt; the app quits so the installer can replace it), the
+`.deb` on Linux. Assets uploaded to a release always get a digest from GitHub.
 
 ## 🏗 Architecture
 

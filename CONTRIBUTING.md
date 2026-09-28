@@ -58,9 +58,11 @@ Everything is driven by `make` (run `make help` for the full list).
 | `make lint` | vet + frontend typecheck + frontend build |
 | `make check` | full gate: fmt, vet, tests, build — **run this before pushing** |
 | `make build` | production build for the current OS into `build/bin/` |
-| `make build-all` | cross-compile macOS / Windows / Linux |
+| `make package` | build + package the current OS into `dist/` (`.dmg` / setup `.exe` + `.zip` / `.deb` + `.tar.gz`) |
+| `make verify` | what CI runs: gofmt, vet, tests, typecheck (no build) |
+| `make build-all` | build every platform (needs cross toolchains; CI packages each OS natively) |
 | `make bump VER=1.2.3` | update `VERSION`, `wails.json`, `frontend/package.json` |
-| `make release` | `make check` + build + package artifacts into `dist/` |
+| `make release` | `make verify` + package this OS into `dist/`, then CHANGELOG + tag |
 
 ### 4. Project layout
 
@@ -164,8 +166,8 @@ for you:
 make changelog-preview   # see exactly what would be written for VERSION
 make changelog           # prepend the entry into CHANGELOG.md
 make tag                 # annotate HEAD as v<version>
-make release             # check + build + package, then changelog + tag + notes
-make publish             # push the tag, then the GitHub release from dist/ artifacts
+make release             # verify + package (this OS), then changelog + tag + notes
+make publish             # push the tag, then create/update the GitHub release from dist/
 ```
 
 This is why the commit prefixes in step 8 are mandatory rather than stylistic:
@@ -189,7 +191,7 @@ against tags.
 
 ### 10. Review process
 
-- A maintainer reviews within a few days; CI-equivalent checks are `make check`.
+- A maintainer reviews within a few days; CI runs `make verify`'s checks (gofmt, vet, tests, typecheck) on Linux, macOS and Windows.
 - Reviews look for: correctness of the matcher, data-safety (section 7), tests
   for new behavior, and both locale catalogs updated.
 - Address feedback by pushing new commits; the maintainer squash-merges, so you

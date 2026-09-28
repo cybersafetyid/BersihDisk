@@ -112,12 +112,24 @@ perlu unduh ulang atau datanya hilang permanen.
 
 ## 🚀 Mulai menggunakan
 
-**Unduh** artefak terbaru dari
-[Releases](https://github.com/cybersafetyid/BersihDisk/releases). Nama artefak
-selalu memuat OS dan arsitektur, contoh `bersihdisk-v1.0.0-macos-arm64.zip`.
-Di macOS pindahkan aplikasi ke `/Applications`; peluncuran pertama mungkin perlu
-klik kanan → *Buka* karena build belum ditandatangani. Linux:
-`chmod +x bersihdisk && ./bersihdisk`.
+**Unduh** build terbaru dari
+[Releases](https://github.com/cybersafetyid/BersihDisk/releases):
+
+| OS | Berkas | Pasang |
+|---|---|---|
+| macOS (Apple Silicon + Intel) | `bersihdisk-vX.Y.Z-macos-universal.dmg` | buka `.dmg`, seret BersihDisk ke *Applications* |
+| Windows 10/11 (x64) | `bersihdisk-vX.Y.Z-windows-x86_64-setup.exe` | jalankan installer (meminta hak admin) |
+| Windows, tanpa install | `bersihdisk-vX.Y.Z-windows-x86_64-portable.zip` | ekstrak lalu jalankan `bersihdisk.exe` |
+| Linux (Debian/Ubuntu, x64) | `bersihdisk-vX.Y.Z-linux-x86_64.deb` | `sudo apt install ./bersihdisk-*.deb` |
+| Linux, distro lain | `bersihdisk-vX.Y.Z-linux-x86_64.tar.gz` | ekstrak lalu jalankan `./bersihdisk` |
+
+`bersihdisk-vX.Y.Z-SHA256SUMS.txt` memuat checksum tiap berkas.
+
+Build **belum ditandatangani/dinotarisasi**. Di macOS berkas hasil unduhan browser
+diberi karantina: klik kanan aplikasi → *Buka* untuk pertama kali (berkas dari
+pembaruan dalam aplikasi tidak dikarantina). Di Windows, SmartScreen bisa
+menampilkan "publisher tidak dikenal": *More info* → *Run anyway*. Linux butuh
+GTK 3 dan WebKit2GTK 4.1 (`libgtk-3-0 libwebkit2gtk-4.1-0`, otomatis lewat `.deb`).
 
 **Build dari sumber** (butuh Go 1.23+, Node.js 18+, Wails CLI v2.12+):
 
@@ -127,9 +139,17 @@ cd BersihDisk
 make doctor          # cek toolchain
 make install-deps    # npm install
 make dev             # mode pengembangan hot-reload
-make build           # build produksi OS saat ini -> build/bin/
-make release         # build + paket artefak -> dist/
+make build           # build cepat OS saat ini -> build/bin/
+make package         # build + paket OS saat ini -> dist/ (dmg / setup.exe + zip / deb + tar.gz)
+make verify          # gerbang CI: gofmt, vet, tes Go, typecheck frontend
 ```
+
+`make package` menjalankan `scripts/package.sh`, yang membangun dan mengemas **OS
+tempat ia dijalankan** (Wails tidak bisa cross-compile aplikasi cgo). Prasyarat
+tambahan: macOS — Xcode command line tools; Windows — MinGW-w64 gcc, NSIS
+(`choco install nsis`), Git Bash, `make`; Linux —
+`sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev dpkg-dev`. Di Windows tanpa
+`make`, jalankan `bash scripts/package.sh` dari Git Bash (skrip yang sama).
 
 > **Catatan Go ≥ 1.24**: CLI `wails` resmi gagal mem-parsing export data Go baru.
 > Jalankan `make install-wails-fix` sekali; hasilnya di
@@ -143,19 +163,22 @@ Perintah harian lewat `make` (lihat `make help`):
 |---|---|
 | `make run` | build & jalankan aplikasi |
 | `make dev` | mode pengembangan hot-reload |
-| `make build` / `make build-all` | build OS saat ini / cross-compile tiga OS |
+| `make build` | build cepat OS saat ini |
+| `make package` | build + paket OS saat ini ke `dist/` (dmg / setup.exe + zip / deb + tar.gz) |
+| `make verify` | gerbang CI: gofmt, vet, tes, typecheck (tanpa build) |
+| `make build-all` | build semua platform (butuh toolchain silang; CI mengemas tiap OS secara native) |
 | `make test` | unit test Go (`-race`) + typecheck frontend |
 | `make check` | verifikasi pra-commit penuh (fmt, vet, test, build) |
 | `make lint` | vet + typecheck + build frontend |
 | `make bump VER=1.2.3` | set versi di `VERSION`, `wails.json`, `package.json` |
 | `make patch` / `minor` / `major` | bump versi semantik otomatis |
-| `make release` | build + zip artefak ke `dist/`, lalu entri CHANGELOG + tag |
+| `make release` | verify + package, lalu entri CHANGELOG + tag |
 | `make release-version VER=x.y.z` | bump lalu release sekaligus |
 | `make changelog-preview` | cetak entri CHANGELOG untuk versi saat ini |
 | `make changelog` | sisipkan entri itu ke `CHANGELOG.md` |
 | `make tag` | buat git tag anotasi `v<versi>` pada HEAD |
 | `make release-notes` | tulis `dist/bersihdisk-v<versi>-notes.md` dari entri |
-| `make publish` | dorong tag, lalu buat release GitHub berisi artefak + notes |
+| `make publish` | dorong tag, lalu buat/perbarui release GitHub dari `dist/` |
 | `make install-deps` / `make doctor` | pasang dependensi frontend / cek toolchain |
 | `make install-wails-fix` | build CLI wails yang kompatibel Go ≥ 1.24 |
 | `make clean` / `distclean` | bersihkan build / + `node_modules` |
@@ -167,9 +190,30 @@ metadata bundle melalui `{{.Info.ProductVersion}}` di `build/darwin/Info.plist`.
 **Menerbitkan rilis yang bisa memperbarui diri:**
 
 ```bash
-make release-version VER=1.1.0   # bump + check + build + paket + CHANGELOG + tag
-make publish                     # release GitHub: notes diambil dari CHANGELOG
+make release-version VER=1.1.0   # bump + verify + paket (OS ini) + CHANGELOG + tag
+git push origin main             # lalu biarkan CI yang merilis …
+git push origin v1.1.0           #   … dengan mendorong tag (tiga OS sekaligus), atau
+make publish                     #   … rilis hasil build mesin ini
 ```
+
+**CI/CD (GitHub Actions)** di `.github/workflows/`: `ci.yml` (tiap push ke `main`
+dan pull request: gofmt, vet, tes Go, typecheck di Ubuntu, macOS, Windows) dan
+`release.yml` (tag `vX.Y.Z`, atau jalankan manual dengan `tag`: build + paket di
+macOS, Windows, Linux lewat `scripts/package.sh`, lalu `scripts/publish.sh`
+membuat release atau memperbaruinya di tempat dan menghapus asset usang).
+Workflow hanya memanggil skrip repo ini, jadi hasil lokal identik.
+
+**Kontrak penamaan.** `scripts/package.sh` menamai berkas
+`bersihdisk-vX.Y.Z-<os>-<arsitektur>[-jenis].<ext>`; `internal/updater` memilih
+asset dengan kata OS (`macos`/`windows`/`linux`), arsitektur (`x86_64`; build
+macOS `universal` cocok untuk keduanya) dan ekstensi terbaik (`.dmg` › `.exe` ›
+`.deb`). `TestPickAssetMatchesPackagedNames` gagal bila keduanya tidak sinkron.
+
+**Pembaruan dalam aplikasi** hanya mengunduh asset dari hasil pengecekan, lewat
+HTTPS dari `github.com`/`githubusercontent.com` (tiap redirect dicek), dan menolak
+memasang bila SHA-256 `digest` dari GitHub tidak cocok. Lalu ia membuka
+installer: `.dmg` di macOS, installer NSIS di Windows (dengan UAC; aplikasi
+menutup diri agar bisa diganti), `.deb` di Linux.
 
 ## 🏗 Arsitektur
 
