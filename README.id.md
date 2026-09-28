@@ -230,8 +230,9 @@ macOS `universal` cocok untuk keduanya) dan ekstensi terbaik (`.dmg` › `.exe` 
 **Pembaruan dalam aplikasi** hanya mengunduh asset dari hasil pengecekan, lewat
 HTTPS dari `github.com`/`githubusercontent.com` (tiap redirect dicek), dan menolak
 memasang bila SHA-256 `digest` dari GitHub tidak cocok. Lalu ia membuka
-installer: `.dmg` di macOS, installer NSIS di Windows (dengan UAC; aplikasi
-menutup diri agar bisa diganti), `.deb` di Linux.
+installer — `.dmg` di macOS, installer NSIS di Windows (dengan UAC), `.deb` di Linux —
+dan di macOS serta Windows aplikasi menutup diri, karena aplikasi yang sedang berjalan
+tidak bisa diganti (Finder melaporkan "item sedang digunakan").
 
 ## 🏗 Arsitektur
 

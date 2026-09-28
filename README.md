@@ -260,9 +260,10 @@ drift apart.
 **In-app updates.** The updater downloads only the asset returned by the update
 check, from `github.com`/`githubusercontent.com` over HTTPS (every redirect is
 checked), and refuses to install unless GitHub's SHA-256 `digest` for that asset
-matches. It then opens the installer: the `.dmg` on macOS, the NSIS installer on
-Windows (with the UAC prompt; the app quits so the installer can replace it), the
-`.deb` on Linux. Assets uploaded to a release always get a digest from GitHub.
+matches. It then opens the installer — the `.dmg` on macOS, the NSIS installer on
+Windows (with the UAC prompt), the `.deb` on Linux — and on macOS and Windows the
+app quits, because a running app cannot be replaced (Finder reports "the item is in
+use"). Assets uploaded to a release always get a digest from GitHub.
 
 ## 🏗 Architecture
 

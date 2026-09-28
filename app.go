@@ -344,9 +344,11 @@ func (a *App) InstallUpdate(path string) error {
 	if err := reveal.Launch(want); err != nil {
 		return err
 	}
-	// A running Windows executable is locked, so the installer cannot replace it
-	// until the app exits. macOS (dmg drag) and Linux (package manager) do not need it.
-	if runtime.GOOS == "windows" {
+	// The running app cannot be replaced: Windows locks its executable, and Finder
+	// refuses to overwrite a running bundle in /Applications ("the item is in use").
+	// So quit once the installer / disk image is open. Linux's package manager can
+	// swap the binary underneath a running process, so it stays open there.
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		go func() {
 			time.Sleep(1500 * time.Millisecond) // let the installer window appear first
 			wailsruntime.Quit(a.ctx)

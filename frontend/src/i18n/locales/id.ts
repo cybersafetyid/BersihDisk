@@ -145,7 +145,7 @@ const id = {
     install: "Install sekarang",
     openInFolder: "Buka di Finder",
     installerOpened: "Installer dibuka",
-    installerOpenedDetail: "Ikuti langkah instalasi lalu jalankan ulang BersihDisk",
+    installerOpenedDetail: "BersihDisk menutup diri agar pembaruan bisa menggantinya — selesaikan instalasi, lalu buka lagi",
     installerFailed: "Gagal membuka installer",
     speed: "{speed}/s",
     progress: "{percent}% · {done} / {total}",

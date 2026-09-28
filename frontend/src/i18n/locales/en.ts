@@ -144,7 +144,7 @@ const en = {
     install: "Install now",
     openInFolder: "Reveal in Finder",
     installerOpened: "Installer opened",
-    installerOpenedDetail: "Follow the installer steps, then restart BersihDisk",
+    installerOpenedDetail: "BersihDisk closes now so the update can replace it — finish the install, then open it again",
     installerFailed: "Could not open the installer",
     speed: "{speed}/s",
     progress: "{percent}% · {done} / {total}",
