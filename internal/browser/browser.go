@@ -37,7 +37,7 @@ func List(dir string) ([]Entry, error) {
 		if info, ierr := e.Info(); ierr == nil {
 			en.IsLink = info.Mode()&os.ModeSymlink != 0
 			if !en.IsDir {
-				en.Size = info.Size()
+				en.Size = scanner.FileBytes(info)
 			}
 		}
 		if en.IsDir {

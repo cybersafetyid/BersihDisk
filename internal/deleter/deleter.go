@@ -4,6 +4,8 @@ package deleter
 
 import (
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -71,6 +73,15 @@ func TrashSupported() bool {
 	return trash.IsAvailable()
 }
 
+// isInside reports whether child sits strictly below parent.
+func isInside(child, parent string) bool {
+	rel, err := filepath.Rel(parent, child)
+	if err != nil || rel == "." || rel == ".." || filepath.IsAbs(rel) {
+		return false
+	}
+	return !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
 // Delete runs the bulk deletion in the given mode.
 func (d *Deleter) Delete(items []Item, mode string) Result {
 	if mode != ModePermanent {
@@ -79,14 +90,29 @@ func (d *Deleter) Delete(items []Item, mode string) Result {
 	start := time.Now()
 	res := Result{Failures: []Failure{}}
 
-	// Deduplicate paths.
+	// Deduplicate paths, then drop any path inside another selected path: the
+	// parent removes it, so deleting both would race and count its bytes twice.
 	sizes := map[string]int64{}
-	order := make([]string, 0, len(items))
+	unique := make([]string, 0, len(items))
 	for _, it := range items {
-		if _, exists := sizes[it.Path]; !exists {
-			order = append(order, it.Path)
+		p := filepath.Clean(it.Path)
+		if _, exists := sizes[p]; !exists {
+			unique = append(unique, p)
 		}
-		sizes[it.Path] = it.Size
+		sizes[p] = it.Size
+	}
+	order := make([]string, 0, len(unique))
+	for _, p := range unique {
+		nested := false
+		for _, q := range unique {
+			if q != p && isInside(p, q) {
+				nested = true
+				break
+			}
+		}
+		if !nested {
+			order = append(order, p)
+		}
 	}
 
 	var (
@@ -113,11 +139,15 @@ func (d *Deleter) Delete(items []Item, mode string) Result {
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			var err error
-			if mode == ModePermanent {
-				err = os.RemoveAll(path)
-			} else {
-				_, err = trash.MoveToTrash(path)
+			// RemoveAll succeeds on a missing path; report it instead of
+			// claiming bytes that were never there.
+			_, err := os.Lstat(path)
+			if err == nil {
+				if mode == ModePermanent {
+					err = os.RemoveAll(path)
+				} else {
+					_, err = trash.MoveToTrash(path)
+				}
 			}
 
 			mu.Lock()
@@ -129,9 +159,9 @@ func (d *Deleter) Delete(items []Item, mode string) Result {
 				res.Failures = append(res.Failures, Failure{Path: path, Message: err.Error()})
 			}
 			done := int(okCount.Load() + failCount.Load())
-			mu.Unlock()
-
+			// Emit under the lock so progress events reach the UI in order.
 			d.emit(Progress{Done: done, Total: len(order), Bytes: bytesFree.Load(), Path: path})
+			mu.Unlock()
 		}(path, sizes[path])
 	}
 	wg.Wait()

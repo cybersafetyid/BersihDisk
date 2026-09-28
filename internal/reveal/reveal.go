@@ -3,6 +3,7 @@ package reveal
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -73,7 +74,9 @@ func Launch(path string) error {
 	case "windows":
 		switch strings.ToLower(filepath.Ext(path)) {
 		case ".exe":
-			cmd = exec.Command(path)
+			// ShellExecute, not CreateProcess: the NSIS installer asks for admin
+			// rights, and starting it directly fails with "requires elevation".
+			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", path)
 		case ".msi":
 			cmd = exec.Command("msiexec", "/i", path)
 		default:
@@ -93,9 +96,18 @@ func Launch(path string) error {
 // OpenURL hands a web or mail address to the user's default handler. The URL is
 // passed as an argument, never evaluated by a shell.
 func OpenURL(rawURL string) error {
-	if rawURL == "" {
-		return fmt.Errorf("no url given")
+	// "open" and "xdg-open" would also launch local files and apps, so only web
+	// and mail links are handed over.
+	u, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return fmt.Errorf("link is not valid: %w", err)
 	}
+	switch strings.ToLower(u.Scheme) {
+	case "http", "https", "mailto":
+	default:
+		return fmt.Errorf("only http, https and mailto links can be opened")
+	}
+	rawURL = u.String()
 
 	var cmd *exec.Cmd
 	switch runtime.GOOS {

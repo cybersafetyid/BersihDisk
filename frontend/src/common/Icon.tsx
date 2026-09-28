@@ -12,6 +12,7 @@ interface IconProps {
 
 // Lucide UI icons rendered inline (stroke style).
 const lucidePaths: Record<string, React.ReactNode> = {
+  "chevron-right": <path d="m9 18 6-6-6-6" />,
   eraser: (
     <>
       <path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" />

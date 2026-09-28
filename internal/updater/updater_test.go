@@ -49,6 +49,8 @@ func TestCompareVersions(t *testing.T) {
 		{"1.10.0", "1.9.9", 1},
 		{"v0.9.0", "1.0.0", -1},
 		{"1.2.3-beta1", "1.2.2", 1},
+		{"1.2.3-beta1", "1.2.3", -1},
+		{"1.2.3", "1.2.3-rc1", 1},
 	}
 	for _, c := range cases {
 		a, err := parseVersion(c.a)
@@ -65,6 +67,40 @@ func TestCompareVersions(t *testing.T) {
 	}
 	if _, err := parseVersion("dev"); err == nil {
 		t.Error("parseVersion(\"dev\") must fail instead of pretending to be 0.0.0")
+	}
+}
+
+// The release artifacts are named by scripts/package.sh. Every platform must get
+// its installer, never another OS's file, the portable zip, or the checksum list.
+func TestPickAssetMatchesPackagedNames(t *testing.T) {
+	names := []string{
+		"bersihdisk-v1.0.0-macos-universal.dmg",
+		"bersihdisk-v1.0.0-windows-x86_64-setup.exe",
+		"bersihdisk-v1.0.0-windows-x86_64-portable.zip",
+		"bersihdisk-v1.0.0-linux-x86_64.deb",
+		"bersihdisk-v1.0.0-linux-x86_64.tar.gz",
+		"bersihdisk-v1.0.0-SHA256SUMS.txt",
+	}
+	var assets []asset
+	for _, n := range names {
+		assets = append(assets, asset{Name: n})
+	}
+	cases := []struct{ goos, goarch, want string }{
+		{"darwin", "arm64", "bersihdisk-v1.0.0-macos-universal.dmg"},
+		{"darwin", "amd64", "bersihdisk-v1.0.0-macos-universal.dmg"},
+		{"windows", "amd64", "bersihdisk-v1.0.0-windows-x86_64-setup.exe"},
+		{"linux", "amd64", "bersihdisk-v1.0.0-linux-x86_64.deb"},
+		{"windows", "arm64", ""}, // no arm64 build is published
+		{"linux", "arm64", ""},
+	}
+	for _, c := range cases {
+		got := ""
+		if a := pickAsset(c.goos, c.goarch, assets); a != nil {
+			got = a.Name
+		}
+		if got != c.want {
+			t.Errorf("%s/%s picked %q, want %q", c.goos, c.goarch, got, c.want)
+		}
 	}
 }
 
@@ -152,6 +188,10 @@ func TestDownloadRejectsBadInput(t *testing.T) {
 	}
 	if _, err := Download(context.Background(), "https://evil.example/x.zip", "", nil); err == nil {
 		t.Error("a host outside the release allowlist must be refused")
+	}
+
+	if _, err := Download(context.Background(), srv.URL+"/x.zip", "", nil); err == nil {
+		t.Error("a release without a digest must be refused")
 	}
 
 	path, err := Download(context.Background(), srv.URL+"/x.zip", "sha256:"+strings.Repeat("00", 32), nil)

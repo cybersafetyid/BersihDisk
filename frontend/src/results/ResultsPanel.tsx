@@ -1,10 +1,11 @@
 // ResultsPanel.tsx — scan results: accordion per category, folder browsing with
 // real sizes, multi-select, and per-item handoff to the OS file manager.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { Icon } from "../common/Icon";
 import { formatSize, formatNumber, shortPath } from "../lib/format";
 import { listFolder } from "../backend";
+import { coveredByAncestor, hasSelectedBelow } from "../lib/paths";
 import { useI18n } from "../i18n/i18n";
 import type { TFunc } from "../i18n/i18n";
 import type { ScanResult, ScanItem, CategoryUI, FolderEntry } from "../lib/types";
@@ -43,13 +44,27 @@ interface RowProps {
   depth: number;
   selected: Set<string>;
   onToggle: (path: string) => void;
+  onSelectMany: (paths: string[], select: boolean) => void;
   onReveal: (path: string) => void;
   onEntries: (entries: { path: string; size: number }[]) => void;
+  /** Set on rows inside an opened folder: releases one child from a selected ancestor. */
+  onExclude?: (path: string) => void;
 }
 
-function Row({ node, depth, selected, onToggle, onReveal, onEntries }: RowProps) {
+function Row({ node, depth, selected, onToggle, onSelectMany, onReveal, onEntries, onExclude }: RowProps) {
   const { t } = useI18n();
-  const checked = selected.has(node.path);
+  // A row is ticked when it, or a folder above it, is selected: deleting the folder
+  // removes the row too, so the UI must not show it as unselected.
+  const inherited = useMemo(() => coveredByAncestor(selected, node.path), [selected, node.path]);
+  const checked = selected.has(node.path) || inherited;
+  const partial = useMemo(
+    () => !checked && node.isDir && hasSelectedBelow(selected, node.path),
+    [checked, node.isDir, selected, node.path],
+  );
+  const box = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (box.current) box.current.indeterminate = partial;
+  }, [partial]);
   const [open, setOpen] = useState(false);
   const [kids, setKids] = useState<Node[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -77,28 +92,52 @@ function Row({ node, depth, selected, onToggle, onReveal, onEntries }: RowProps)
     fn();
   };
 
+  // Unticking a child of a selected folder: drop the folder from the selection and
+  // keep every sibling, so exactly the one child is left out.
+  const excludeChild = (childPath: string) => {
+    if (selected.has(node.path)) onToggle(node.path);
+    if (inherited) onExclude?.(node.path);
+    onSelectMany((kids ?? []).map((k) => k.path).filter((p) => p !== childPath), true);
+  };
+
+  const onBoxChange = () => {
+    if (!inherited) return onToggle(node.path);
+    // Covered from above: only rows inside an opened folder can be released.
+    if (onExclude) onExclude(node.path);
+  };
+
+  const toggleOpen = () => {
+    const next = !open;
+    setOpen(next);
+    if (next) void load();
+  };
+
   const indent = 12 + depth * 18;
 
   return (
     <>
       <label className={`item-row ${checked ? "checked" : ""}`} style={{ paddingLeft: indent }}>
-        <input type="checkbox" checked={checked} onChange={() => onToggle(node.path)} />
+        <input
+          ref={box}
+          type="checkbox"
+          checked={checked}
+          disabled={inherited && !onExclude}
+          onChange={onBoxChange}
+        />
         {node.isDir ? (
           <button
-            className="tree-expander"
-            title={t(open ? "tree.collapse" : "tree.expand")}
-            onClick={stop(() => {
-              const next = !open;
-              setOpen(next);
-              if (next) void load();
-            })}
+            className={`tree-expander ${open ? "open" : ""}`}
+            data-tip={t(open ? "tree.collapse" : "tree.expand")}
+            aria-label={t(open ? "tree.collapse" : "tree.expand")}
+            aria-expanded={open}
+            onClick={stop(toggleOpen)}
           >
-            <span className={`arrow ${open ? "" : "folded"}`}>▾</span>
+            <Icon name="chevron-right" size={12} className="tree-chevron" />
           </button>
         ) : (
           <span className="tree-spacer" />
         )}
-        <span className="item-main">
+        <span className="item-main" onDoubleClick={node.isDir ? toggleOpen : undefined}>
           <span className="item-path" title={node.path}>
             {depth === 0 ? shortPath(node.path, 64) : node.name}
           </span>
@@ -120,7 +159,17 @@ function Row({ node, depth, selected, onToggle, onReveal, onEntries }: RowProps)
           {loading && <div className="tree-status" style={{ paddingLeft: indent + 18 }}>{t("tree.loading")}</div>}
           {error && <div className="tree-status" style={{ paddingLeft: indent + 18 }}>{error}</div>}
           {kids?.map((k) => (
-            <Row key={k.path} node={k} depth={depth + 1} selected={selected} onToggle={onToggle} onReveal={onReveal} onEntries={onEntries} />
+            <Row
+              key={k.path}
+              node={k}
+              depth={depth + 1}
+              selected={selected}
+              onToggle={onToggle}
+              onSelectMany={onSelectMany}
+              onReveal={onReveal}
+              onEntries={onEntries}
+              onExclude={excludeChild}
+            />
           ))}
           {kids && kids.length === 0 && !loading && !error && (
             <div className="tree-status" style={{ paddingLeft: indent + 18 }}>{t("tree.empty")}</div>
@@ -227,6 +276,7 @@ export function ResultsPanel({ result, categories, selected, onToggleItem, onSel
                       depth={0}
                       selected={selected}
                       onToggle={onToggleItem}
+                      onSelectMany={onSelectMany}
                       onReveal={onReveal}
                       onEntries={onEntries}
                     />

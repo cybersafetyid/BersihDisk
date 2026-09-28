@@ -169,8 +169,33 @@
   transition: all var(--duration) var(--ease);
 }
 .tree-expander:hover, .tree-reveal:hover { background: var(--surface-2); color: var(--accent); }
-.tree-expander .arrow { font-size: 11px; }
-.tree-spacer { width: 22px; flex-shrink: 0; }
+/* Folder rows advertise that they open: a bordered chevron button with a tooltip. */
+.tree-expander {
+  position: relative;
+  display: grid; place-items: center;
+  box-sizing: border-box;
+  /* Same box as the checkbox next to it (see tokens.css). */
+  width: 17px; height: 17px;
+  padding: 0; /* the browser's default button padding pushed the icon off-centre */
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface-2);
+  color: var(--text);
+}
+.tree-expander .tree-chevron { display: block; transform-origin: center; transition: transform var(--duration) var(--ease); }
+.tree-expander.open { color: var(--accent); border-color: var(--accent); }
+.tree-expander.open .tree-chevron { transform: rotate(90deg); }
+.tree-expander:hover { border-color: var(--accent); }
+.tree-expander[data-tip]:hover::after,
+.tree-expander[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute; left: calc(100% + 8px); top: 50%; transform: translateY(-50%);
+  padding: 4px 8px; border-radius: 6px;
+  background: var(--text); color: var(--bg);
+  font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  pointer-events: none; z-index: 10;
+}
+.tree-spacer { width: 17px; flex-shrink: 0; }
 .tree-kids { animation: fade 0.2s var(--ease); }
 .tree-status {
   padding: 6px 12px;

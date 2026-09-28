@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image"
 	"image/color"
 	"testing"
 )
@@ -43,5 +44,23 @@ func TestVariantNamesMatchFrontendIconKey(t *testing.T) {
 		if v.name != want[i] {
 			t.Errorf("variants[%d].name = %q, want %q (keep IconKey in settings.ts in sync)", i, v.name, want[i])
 		}
+	}
+}
+
+// A logo drawn with a transparent margin must come out edge to edge, with the
+// rounded corner still transparent.
+func TestFillCanvasRemovesMargin(t *testing.T) {
+	src := image.NewNRGBA(image.Rect(0, 0, 100, 100))
+	for y := 20; y < 80; y++ {
+		for x := 20; x < 80; x++ {
+			src.SetNRGBA(x, y, color.NRGBA{R: 200, G: 10, B: 10, A: 255})
+		}
+	}
+	out := fillCanvas(src, 64)
+	if got := out.NRGBAAt(1, 32); got.A != 255 {
+		t.Errorf("left edge alpha = %d, want opaque artwork right at the edge", got.A)
+	}
+	if got := out.NRGBAAt(32, 62); got.R != 200 || got.A != 255 {
+		t.Errorf("bottom edge = %+v, want the artwork colour", got)
 	}
 }

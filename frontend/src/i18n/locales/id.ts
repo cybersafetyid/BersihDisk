@@ -100,7 +100,7 @@ const id = {
     folders: "folder",
     willFree: "akan dibebaskan",
     trash: "Tempat Sampah",
-    trashDesc: "Bisa dipulihkan bila terhapus keliru",
+    trashDesc: "Bisa dipulihkan bila terhapus keliru. Ruang baru bebas setelah Tempat Sampah dikosongkan",
     permanent: "Permanen",
     permanentDesc: "Tidak bisa dikembalikan",
     warning: "Penghapusan permanen tidak dapat dibatalkan. Pastikan folder yang dipilih bukan berisi data penting.",
@@ -113,6 +113,7 @@ const id = {
     title: "Menghapus…",
     progress: "{done} / {total} item",
     freed: "{size} dibebaskan",
+    cancel: "Hentikan",
   },
   toast: {
     loadFailed: "Gagal memuat data awal",
@@ -120,6 +121,7 @@ const id = {
     scanCancelled: "Scan dihentikan",
     scanCancelledDetail: "Hasil parsial ditampilkan",
     deleteResult: "{ok} folder dihapus · {size} dibebaskan",
+    trashResult: "{ok} folder dipindah ke Tempat Sampah · {size} — kosongkan Tempat Sampah untuk membebaskan ruang",
     deleteFailedDetail: "{failed} gagal — periksa izin folder",
   },
   update: {

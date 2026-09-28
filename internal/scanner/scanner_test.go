@@ -4,6 +4,7 @@ package scanner
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -89,6 +90,30 @@ func TestScanFixture(t *testing.T) {
 	}
 	if res.TotalBytes <= 0 {
 		t.Error("total bytes must be > 0")
+	}
+}
+
+// System-folder names are skipped only directly under a filesystem root; a
+// developer's own "dev" or "System" folder must still be searched.
+func TestSkipMatchIsRootOnlyForSystemNames(t *testing.T) {
+	sep := string(filepath.Separator)
+	root := sep
+	if v := filepath.VolumeName(os.TempDir()); v != "" {
+		root = v + sep
+	}
+	cases := []struct {
+		dir  string
+		want bool
+	}{
+		{filepath.Join(root, "dev"), true},
+		{filepath.Join(root, "Users", "me", "dev"), false},
+		{filepath.Join(root, "work", "System"), false},
+		{filepath.Join(root, "work", ".Trash"), true},
+	}
+	for _, c := range cases {
+		if got := skipMatch(c.dir, strings.ToLower(filepath.Base(c.dir))); got != c.want {
+			t.Errorf("skipMatch(%q) = %v, want %v", c.dir, got, c.want)
+		}
 	}
 }
 
@@ -319,5 +344,23 @@ func TestFinalizeCountsNestedOnce(t *testing.T) {
 		if nested[p] != want {
 			t.Errorf("nestedIn(%s) = %q, want %q", p, nested[p], want)
 		}
+	}
+}
+
+// A hard-linked file keeps its data through the other link, so it must not be
+// promised as freed space.
+func TestSizesIgnoreHardLinks(t *testing.T) {
+	root := t.TempDir()
+	dir := filepath.Join(root, "d")
+	mk(t, dir, "own.bin", strings.Repeat("x", 100))
+	mk(t, root, "shared.bin", strings.Repeat("y", 500))
+	if err := os.Link(filepath.Join(root, "shared.bin"), filepath.Join(dir, "link.bin")); err != nil {
+		t.Skip("hard links unavailable:", err)
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("hard links are not detected on Windows")
+	}
+	if got := Sizes([]string{dir})[0]; got != 100 {
+		t.Errorf("size = %d, want 100 (hard link excluded)", got)
 	}
 }

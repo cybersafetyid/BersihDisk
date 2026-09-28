@@ -48,6 +48,7 @@ export default function App() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState<DeleteMode>("trash");
+  const lastMode = useRef<DeleteMode>("trash");
   const [deleteProgress, setDeleteProgress] = useState<DeleteProgress | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const toastId = useRef(0);
@@ -115,9 +116,16 @@ export default function App() {
       setScanProgress(null);
       setSelectedItems(new Set());
       setKnownSizes(new Map());
+      // Free space changed; refresh the drive cards.
+      api.detectDrives().then(setDrives).catch(() => {});
+      // Name the first failures so the user can see which paths stayed and why.
+      const failures = (r.failures ?? []).slice(0, 3).map((f) => `${f.path}: ${f.message}`);
+      const more = r.failed > failures.length ? ` (+${r.failed - failures.length})` : "";
       notify(
-        t("toast.deleteResult", { ok: formatNumber(r.ok), size: formatSize(r.bytes) }),
-        r.failed > 0 ? t("toast.deleteFailedDetail", { failed: r.failed }) : undefined,
+        t(lastMode.current === "trash" ? "toast.trashResult" : "toast.deleteResult", { ok: formatNumber(r.ok), size: formatSize(r.bytes) }),
+        r.failed > 0
+          ? [t("toast.deleteFailedDetail", { failed: r.failed }), ...failures].join(" · ") + more
+          : undefined,
         r.failed > 0 ? "info" : "success",
       );
     });
@@ -167,6 +175,7 @@ export default function App() {
 
   const confirmDelete = () => {
     const paths = [...selectedItems];
+    lastMode.current = deleteMode;
     setConfirmOpen(false);
     setStage("delete");
     setDeleteProgress({ done: 0, total: paths.length, bytes: 0, path: "" });
@@ -286,7 +295,7 @@ export default function App() {
           busy={false}
         />
       )}
-      {stage === "delete" && deleteProgress && <DeleteProgressView progress={deleteProgress} />}
+      {stage === "delete" && deleteProgress && <DeleteProgressView progress={deleteProgress} onCancel={() => api.cancelDelete()} />}
 
       <div className="toast-container">
         {toasts.map((x) => <Toast key={x.id} toast={x} onClose={closeToast} />)}

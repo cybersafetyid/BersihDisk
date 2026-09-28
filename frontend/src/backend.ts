@@ -1,7 +1,7 @@
 // backend.ts — wrapper around the generated Wails bindings (frontend/wailsjs)
 // with our own types so the frontend stays decoupled from codegen details.
 import * as BackendRaw from "../wailsjs/go/main/App";
-import { EventsOn, EventsOff } from "../wailsjs/runtime/runtime";
+import { EventsOn } from "../wailsjs/runtime/runtime";
 import type {
   DriveUI, CategoryUI, ScanResult, ScanProgress, DeleteProgress, DeleteResult,
   FolderEntry, UpdateInfo, UpdateProgress, UpdateResult, MachineInfo, AppInstallInfo, CacheReport,
@@ -38,27 +38,23 @@ export const appIconSupported = (): Promise<boolean> => B.AppIconSupported();
 export const setAppIcon = (pngBase64: string): Promise<void> => B.SetAppIcon(pngBase64);
 export const openLink = (url: string): Promise<void> => B.OpenLink(url);
 
+// EventsOn returns a function that removes only this listener, unlike EventsOff(name),
+// which would drop every listener of the event.
 export function onScanProgress(cb: (p: ScanProgress) => void) {
-  EventsOn("scan:progress", cb);
-  return () => EventsOff("scan:progress");
+  return EventsOn("scan:progress", cb);
 }
 export function onScanFinished(cb: (r: ScanResult) => void) {
-  EventsOn("scan:finished", cb);
-  return () => EventsOff("scan:finished");
+  return EventsOn("scan:finished", cb);
 }
 export function onDeleteProgress(cb: (p: DeleteProgress) => void) {
-  EventsOn("delete:progress", cb);
-  return () => EventsOff("delete:progress");
+  return EventsOn("delete:progress", cb);
 }
 export function onDeleteFinished(cb: (r: DeleteResult) => void) {
-  EventsOn("delete:finished", cb);
-  return () => EventsOff("delete:finished");
+  return EventsOn("delete:finished", cb);
 }
 export function onUpdateProgress(cb: (p: UpdateProgress) => void) {
-  EventsOn("update:progress", cb);
-  return () => EventsOff("update:progress");
+  return EventsOn("update:progress", cb);
 }
 export function onUpdateFinished(cb: (r: UpdateResult) => void) {
-  EventsOn("update:finished", cb);
-  return () => EventsOff("update:finished");
+  return EventsOn("update:finished", cb);
 }

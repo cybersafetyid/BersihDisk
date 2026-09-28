@@ -212,12 +212,24 @@ func mavenTargetFilter(entries []string) bool {
 	return false
 }
 
-// dotnetFilter: .NET "bin"/"obj" contains Debug/Release/.dll.
+// dotnetFilter: .NET "bin"/"obj" contains Debug/Release/.dll. A bare .exe is not
+// enough — hand-made tool folders named "bin" hold those too.
 func dotnetFilter(entries []string) bool {
 	for _, e := range entries {
 		l := strings.ToLower(e)
 		if l == "debug" || l == "release" || strings.HasSuffix(l, ".dll") ||
-			strings.HasSuffix(l, ".exe") || l == "ref" || strings.HasSuffix(l, ".cache") {
+			l == "project.assets.json" || strings.HasSuffix(l, ".csproj.nuget.cache") {
+			return true
+		}
+	}
+	return false
+}
+
+// venvFilter: only a real virtualenv (it always has pyvenv.cfg), not any folder
+// that happens to be called "venv".
+func venvFilter(entries []string) bool {
+	for _, e := range entries {
+		if strings.EqualFold(e, "pyvenv.cfg") {
 			return true
 		}
 	}
@@ -286,10 +298,11 @@ func All() []Rule {
 			maxDepth: 4,
 		},
 		{
-			ID:       CatPython,
-			Icon:     IconPython,
-			dirNames: []string{"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".venv", "venv"},
-			maxDepth: 5,
+			ID:             CatPython,
+			Icon:           IconPython,
+			dirNames:       []string{"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".venv", "venv"},
+			maxDepth:       5,
+			contentFilters: map[string]func([]string) bool{".venv": venvFilter, "venv": venvFilter},
 		},
 		{
 			ID:             CatDotnet,

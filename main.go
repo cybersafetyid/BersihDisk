@@ -9,6 +9,16 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/mac"
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
+
+	"bersihdisk/internal/winstate"
+)
+
+// Window geometry: the first launch opens maximised and restores to this size.
+const (
+	defaultWidth  = 1180
+	defaultHeight = 780
+	minWidth      = 900
+	minHeight     = 620
 )
 
 //go:embed all:frontend/dist
@@ -24,12 +34,28 @@ var releaseRepo = "cybersafetyid/BersihDisk"
 func main() {
 	app := NewApp()
 
+	// Reopen the window as the user left it; first launch is maximised.
+	win, ok := winstate.Load(minWidth, minHeight)
+	if !ok {
+		win = winstate.Default(defaultWidth, defaultHeight)
+	}
+	app.win = win
+	startState := options.Normal
+	switch {
+	case win.Fullscreen:
+		startState = options.Fullscreen
+	case win.Maximised:
+		startState = options.Maximised
+	}
+
 	err := wails.Run(&options.App{
-		Title:     "BersihDisk — Pembersih Disk",
-		Width:     1180,
-		Height:    780,
-		MinWidth:  900,
-		MinHeight: 620,
+		Title:            "BersihDisk — Pembersih Disk",
+		Width:            win.Width,
+		Height:           win.Height,
+		MinWidth:         minWidth,
+		MinHeight:        minHeight,
+		WindowStartState: startState,
+		OnBeforeClose:    app.beforeClose,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

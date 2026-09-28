@@ -30,6 +30,9 @@ var apiBase = "https://api.github.com"
 // and run arbitrary URLs.
 var downloadHosts = []string{"github.com", "githubusercontent.com"}
 
+// maxDownload caps an update download so a hostile feed cannot fill the disk.
+const maxDownload = 1 << 30
+
 // Info tells the UI whether a newer release exists and what to download.
 type Info struct {
 	Available bool   `json:"available"`
@@ -115,7 +118,7 @@ func Check(ctx context.Context, repo, current string) (Info, error) {
 	info.Notes = strings.TrimSpace(rel.Body)
 	info.Page = rel.HTMLURL
 
-	asset := pickAsset(rel.Assets)
+	asset := pickAsset(runtime.GOOS, runtime.GOARCH, rel.Assets)
 	if asset == nil {
 		return info, nil // a newer release exists but has no build for this OS
 	}
@@ -127,11 +130,12 @@ func Check(ctx context.Context, repo, current string) (Info, error) {
 	return info, nil
 }
 
-// pickAsset chooses the build that matches this OS and architecture, preferring
-// the most installable format per platform.
-func pickAsset(assets []asset) *asset {
+// pickAsset chooses the build that matches goos/goarch, preferring the most
+// installable format per platform. The release artifact names are produced by
+// scripts/package.sh; TestPickAssetMatchesPackagedNames keeps the two in step.
+func pickAsset(goos, goarch string, assets []asset) *asset {
 	var wantOS, wantExt []string
-	switch runtime.GOOS {
+	switch goos {
 	case "darwin":
 		wantOS = []string{"macos", "darwin", "apple"}
 		wantExt = []string{".dmg", ".pkg", ".zip"}
@@ -142,7 +146,7 @@ func pickAsset(assets []asset) *asset {
 		wantOS = []string{"linux"}
 		wantExt = []string{".AppImage", ".deb", ".tar.gz", ".tgz", ".zip"}
 	}
-	arch := runtime.GOARCH
+	arch := goarch
 	if arch == "amd64" {
 		arch = "x86_64"
 	}
@@ -182,19 +186,36 @@ func Download(ctx context.Context, url, digest string, onProgress func(Progress)
 	if err != nil {
 		return "", err
 	}
+	// An installer is run afterwards, so an unverifiable one is never fetched.
+	want, err := hexDigest(digest)
+	if err != nil {
+		return "", fmt.Errorf("release has no sha256 digest to verify the download: %w", err)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("User-Agent", "bersihdisk-updater")
 
-	resp, err := http.DefaultClient.Do(req)
+	// Every redirect hop must stay on a release host, not only the first URL.
+	client := *http.DefaultClient
+	client.CheckRedirect = func(r *http.Request, via []*http.Request) error {
+		if len(via) >= 10 {
+			return fmt.Errorf("too many redirects")
+		}
+		_, err := checkDownloadURL(r.URL.String())
+		return err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("download failed: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("download returned HTTP %d", resp.StatusCode)
+	}
+	if resp.ContentLength > maxDownload {
+		return "", fmt.Errorf("download is larger than %d bytes", maxDownload)
 	}
 
 	dir, err := os.MkdirTemp("", "bersihdisk-update-")
@@ -249,6 +270,11 @@ func Download(ctx context.Context, url, digest string, onProgress func(Progress)
 			}
 			_, _ = hash.Write(buf[:n])
 			written += int64(n)
+			if written > maxDownload {
+				f.Close()
+				os.RemoveAll(dir)
+				return "", fmt.Errorf("download is larger than %d bytes", maxDownload)
+			}
 			emit(false)
 		}
 		if rerr == io.EOF {
@@ -270,17 +296,10 @@ func Download(ctx context.Context, url, digest string, onProgress func(Progress)
 	}
 	emit(true)
 
-	if digest != "" {
-		onProgressMaybe(onProgress, Progress{Path: path, Bytes: written, Total: written, Percent: 100, Phase: "verify"})
-		want, err := hexDigest(digest)
-		if err != nil {
-			os.RemoveAll(dir)
-			return "", err
-		}
-		if got := hex.EncodeToString(hash.Sum(nil)); got != want {
-			os.RemoveAll(dir)
-			return "", fmt.Errorf("checksum mismatch: expected %s, got %s", want, got)
-		}
+	onProgressMaybe(onProgress, Progress{Path: path, Bytes: written, Total: written, Percent: 100, Phase: "verify"})
+	if got := hex.EncodeToString(hash.Sum(nil)); got != want {
+		os.RemoveAll(dir)
+		return "", fmt.Errorf("checksum mismatch: expected %s, got %s", want, got)
 	}
 
 	onProgressMaybe(onProgress, Progress{Path: path, Bytes: written, Total: written, Percent: 100, Phase: "ready"})
@@ -333,9 +352,14 @@ func hexDigest(digest string) (string, error) {
 	return hexPart, nil
 }
 
-var versionRE = regexp.MustCompile(`v?(\d+)\.(\d+)\.(\d+)`)
+var versionRE = regexp.MustCompile(`v?(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.]+)?`)
 
-type version [3]int
+// version is major.minor.patch; pre marks a "-beta"-style suffix, which sorts
+// before the release with the same numbers.
+type version struct {
+	n   [3]int
+	pre bool
+}
 
 func parseVersion(s string) (version, error) {
 	m := versionRE.FindStringSubmatch(strings.TrimSpace(s))
@@ -348,20 +372,27 @@ func parseVersion(s string) (version, error) {
 		if err != nil {
 			return version{}, err
 		}
-		v[i] = n
+		v.n[i] = n
 	}
+	v.pre = m[4] != ""
 	return v, nil
 }
 
 // compare returns 1 when v is newer than other, -1 when older, 0 when equal.
 func (v version) compare(other version) int {
 	for i := 0; i < 3; i++ {
-		if v[i] != other[i] {
-			if v[i] > other[i] {
+		if v.n[i] != other.n[i] {
+			if v.n[i] > other.n[i] {
 				return 1
 			}
 			return -1
 		}
+	}
+	switch {
+	case v.pre && !other.pre:
+		return -1
+	case !v.pre && other.pre:
+		return 1
 	}
 	return 0
 }

@@ -99,7 +99,7 @@ const en = {
     folders: "folders",
     willFree: "will be freed",
     trash: "Trash",
-    trashDesc: "Recoverable if you deleted by mistake",
+    trashDesc: "Recoverable if you deleted by mistake. Space is freed only after you empty the Trash",
     permanent: "Permanent",
     permanentDesc: "Cannot be undone",
     warning: "Permanent deletion cannot be undone. Make sure the selected folders do not hold anything important.",
@@ -112,6 +112,7 @@ const en = {
     title: "Deleting…",
     progress: "{done} / {total} items",
     freed: "{size} freed",
+    cancel: "Stop",
   },
   toast: {
     loadFailed: "Could not load initial data",
@@ -119,6 +120,7 @@ const en = {
     scanCancelled: "Scan stopped",
     scanCancelledDetail: "Partial results are shown",
     deleteResult: "{ok} folders deleted · {size} freed",
+    trashResult: "{ok} folders moved to Trash · {size} — empty the Trash to free the space",
     deleteFailedDetail: "{failed} failed — check folder permissions",
   },
   update: {

@@ -5,8 +5,11 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
+	"time"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -19,6 +22,7 @@ import (
 	"bersihdisk/internal/scanner"
 	"bersihdisk/internal/sysinfo"
 	"bersihdisk/internal/updater"
+	"bersihdisk/internal/winstate"
 )
 
 // CategoryUI is one cleanup category. Its display text lives in the frontend
@@ -60,6 +64,36 @@ type App struct {
 	scanner      *scanner.Scanner
 	deleter      *deleter.Deleter
 	updateCancel context.CancelFunc
+
+	// The frontend is not trusted with arbitrary paths: deletion is limited to the
+	// last scan's items (and what lies inside them), and only the file this app
+	// downloaded can be installed.
+	win        winstate.State // window state loaded at launch, updated on close
+	scanPaths  []string
+	release    updater.Info // last CheckUpdate result; the download URL and digest come from here
+	updateFile string
+}
+
+// isInside reports whether child is parent itself or lies below it.
+func isInside(child, parent string) bool {
+	rel, err := filepath.Rel(parent, child)
+	if err != nil || filepath.IsAbs(rel) {
+		return false
+	}
+	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
+}
+
+// deletable reports whether path belongs to the last scan result.
+func (a *App) deletable(path string) bool {
+	path = filepath.Clean(path)
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	for _, root := range a.scanPaths {
+		if isInside(path, root) {
+			return true
+		}
+	}
+	return false
 }
 
 // NewApp creates the App instance.
@@ -70,6 +104,30 @@ func NewApp() *App {
 // startup is called by Wails when the app starts.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	// Wails has no start position option, so a saved position is applied here — only
+	// when it still lies on the primary screen (a monitor may have been unplugged).
+	if a.win.Maximised || a.win.Fullscreen {
+		return
+	}
+	if screens, err := wailsruntime.ScreenGetAll(ctx); err == nil {
+		for _, s := range screens {
+			if s.IsPrimary && a.win.PositionOnScreen(s.Width, s.Height) {
+				wailsruntime.WindowSetPosition(ctx, a.win.X, a.win.Y)
+			}
+		}
+	}
+}
+
+// beforeClose stores the window state so the next launch reopens it as it was.
+func (a *App) beforeClose(ctx context.Context) bool {
+	w, h := wailsruntime.WindowGetSize(ctx)
+	x, y := wailsruntime.WindowGetPosition(ctx)
+	a.win = winstate.Merge(a.win, w, h, x, y,
+		wailsruntime.WindowIsMaximised(ctx), wailsruntime.WindowIsFullscreen(ctx))
+	if err := winstate.Save(a.win); err != nil {
+		wailsruntime.LogErrorf(ctx, "could not save window state: %v", err)
+	}
+	return false // let the window close
 }
 
 // DetectDrives returns the list of mounted drives.
@@ -134,11 +192,19 @@ func (a *App) StartScan(req ScanRequest) string {
 	go func() {
 		res := s.Scan(req.Roots, req.Categories)
 		a.mu.Lock()
-		if a.scanner == s {
+		current := a.scanner == s
+		if current {
 			a.scanner = nil
+			a.scanPaths = a.scanPaths[:0]
+			for _, it := range res.Items {
+				a.scanPaths = append(a.scanPaths, filepath.Clean(it.Path))
+			}
 		}
 		a.mu.Unlock()
-		wailsruntime.EventsEmit(a.ctx, "scan:finished", res)
+		// A scan replaced by a newer one is stale; its result must not reach the UI.
+		if current {
+			wailsruntime.EventsEmit(a.ctx, "scan:finished", res)
+		}
 	}()
 	return "ok"
 }
@@ -168,7 +234,12 @@ func (a *App) StartDelete(req DeleteRequest) string {
 
 	go func() {
 		items := make([]deleter.Item, 0, len(req.Paths))
+		var denied []deleter.Failure
 		for i, p := range req.Paths {
+			if !a.deletable(p) {
+				denied = append(denied, deleter.Failure{Path: p, Message: "not part of the scan result"})
+				continue
+			}
 			var size int64
 			if i < len(req.Sizes) {
 				size = req.Sizes[i]
@@ -176,6 +247,8 @@ func (a *App) StartDelete(req DeleteRequest) string {
 			items = append(items, deleter.Item{Path: p, Size: size})
 		}
 		res := d.Delete(items, req.Mode)
+		res.Failures = append(res.Failures, denied...)
+		res.Failed += len(denied)
 		wailsruntime.EventsEmit(a.ctx, "delete:finished", res)
 	}()
 	return "ok"
@@ -200,13 +273,28 @@ type UpdateDownload struct {
 
 // CheckUpdate looks for a newer GitHub release of releaseRepo.
 func (a *App) CheckUpdate() (updater.Info, error) {
-	return updater.Check(a.ctx, releaseRepo, appVersion)
+	info, err := updater.Check(a.ctx, releaseRepo, appVersion)
+	if err == nil {
+		a.mu.Lock()
+		a.release = info
+		a.mu.Unlock()
+	}
+	return info, err
 }
 
 // StartUpdateDownload fetches the release asset asynchronously; progress arrives
 // on the "update:progress" event and the result on "update:finished".
-func (a *App) StartUpdateDownload(rawURL, digest string) string {
+//
+// Only the asset that CheckUpdate returned can be fetched, and its digest is the
+// one from that check — the arguments are not trusted to choose either.
+func (a *App) StartUpdateDownload(rawURL, _ string) string {
 	a.mu.Lock()
+	if rawURL == "" || rawURL != a.release.URL {
+		a.mu.Unlock()
+		wailsruntime.EventsEmit(a.ctx, "update:finished", UpdateDownload{Error: "download is not the release found by the update check"})
+		return "denied"
+	}
+	digest := a.release.Digest
 	if a.updateCancel != nil {
 		a.updateCancel()
 	}
@@ -220,6 +308,9 @@ func (a *App) StartUpdateDownload(rawURL, digest string) string {
 		})
 		a.mu.Lock()
 		a.updateCancel = nil
+		if err == nil {
+			a.updateFile = path
+		}
 		a.mu.Unlock()
 
 		res := UpdateDownload{Path: path}
@@ -244,7 +335,24 @@ func (a *App) CancelUpdate() {
 
 // InstallUpdate opens the downloaded build so the OS can install it.
 func (a *App) InstallUpdate(path string) error {
-	return reveal.Launch(path)
+	a.mu.Lock()
+	want := a.updateFile
+	a.mu.Unlock()
+	if want == "" || filepath.Clean(path) != want {
+		return fmt.Errorf("only the downloaded update can be installed")
+	}
+	if err := reveal.Launch(want); err != nil {
+		return err
+	}
+	// A running Windows executable is locked, so the installer cannot replace it
+	// until the app exits. macOS (dmg drag) and Linux (package manager) do not need it.
+	if runtime.GOOS == "windows" {
+		go func() {
+			time.Sleep(1500 * time.Millisecond) // let the installer window appear first
+			wailsruntime.Quit(a.ctx)
+		}()
+	}
+	return nil
 }
 
 // AppInfo returns app metadata for the About dialog.

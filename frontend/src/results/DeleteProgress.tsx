@@ -3,7 +3,7 @@ import { formatSize } from "../lib/format";
 import { useI18n } from "../i18n/i18n";
 import type { DeleteProgress } from "../lib/types";
 
-export function DeleteProgressView({ progress }: { progress: DeleteProgress }) {
+export function DeleteProgressView({ progress, onCancel }: { progress: DeleteProgress; onCancel: () => void }) {
   const { t } = useI18n();
   const percent = progress.total > 0 ? (progress.done / progress.total) * 100 : 0;
 
@@ -17,6 +17,9 @@ export function DeleteProgressView({ progress }: { progress: DeleteProgress }) {
         <div className="progress-meta">
           <span>{t("delete.progress", { done: progress.done, total: progress.total })}</span>
           <span>{t("delete.freed", { size: formatSize(progress.bytes) })}</span>
+        </div>
+        <div className="modal-actions">
+          <button className="btn btn-ghost" onClick={onCancel}>{t("delete.cancel")}</button>
         </div>
       </div>
     </div>

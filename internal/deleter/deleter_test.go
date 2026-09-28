@@ -56,6 +56,28 @@ func TestDeleteDedup(t *testing.T) {
 	}
 }
 
+// A path inside another selected path is removed by the parent, so it must not
+// be deleted separately or have its bytes counted twice.
+func TestDeleteSkipsNestedAndMissing(t *testing.T) {
+	tmp := t.TempDir()
+	parent := mkDir(t, tmp, "parent")
+	child := mkDir(t, parent, "child")
+
+	d := New(func(Progress) {})
+	res := d.Delete([]Item{
+		{Path: parent, Size: 300},
+		{Path: child, Size: 128},
+	}, ModePermanent)
+	if res.OK != 1 || res.Failed != 0 || res.Bytes != 300 {
+		t.Errorf("nested: want 1 OK, 300 bytes, got %+v", res)
+	}
+
+	res = d.Delete([]Item{{Path: filepath.Join(tmp, "gone"), Size: 50}}, ModePermanent)
+	if res.OK != 0 || res.Failed != 1 || res.Bytes != 0 {
+		t.Errorf("missing path must fail without freeing bytes, got %+v", res)
+	}
+}
+
 func TestDeleteCancelled(t *testing.T) {
 	tmp := t.TempDir()
 	a := mkDir(t, tmp, "a")

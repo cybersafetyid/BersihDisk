@@ -142,6 +142,17 @@ var SkipList = []string{
 	"lost+found",
 }
 
+// rootOnlySkip are SkipList names that are system folders only directly under a
+// filesystem root ("/dev", "C:\Windows"). Elsewhere they are ordinary names —
+// ~/dev/app/node_modules must still be found.
+var rootOnlySkip = map[string]struct{}{
+	"volumes": {}, "system": {}, "private": {}, "cores": {}, "dev": {}, "net": {},
+	"windows": {}, "program files": {}, "program files (x86)": {}, "programdata": {},
+	"recovery": {}, "msocache": {},
+	"proc": {}, "sys": {}, "run": {}, "boot": {}, "usr": {}, "etc": {}, "var": {},
+	"snap": {}, "srv": {},
+}
+
 // skipSet is the lowercased SkipList, built once so the walker does not rebuild
 // it for every directory it passes.
 var skipSet = func() map[string]struct{} {
@@ -152,10 +163,17 @@ var skipSet = func() map[string]struct{} {
 	return m
 }()
 
-// skipMatch checks an already-lowercased directory name against SkipList.
-func skipMatch(lower string) bool {
-	_, ok := skipSet[lower]
-	return ok
+// skipMatch reports whether dir must not be entered. A root-only name counts only
+// when its parent is a filesystem root; any other SkipList name counts anywhere.
+func skipMatch(dir, lower string) bool {
+	if _, ok := skipSet[lower]; !ok {
+		return false
+	}
+	if _, rootOnly := rootOnlySkip[lower]; rootOnly {
+		parent := filepath.Dir(dir)
+		return filepath.Dir(parent) == parent
+	}
+	return true
 }
 
 // scanWorkers sizes the walker pool. A scan is syscall-bound (open + readdir +
@@ -447,7 +465,7 @@ func treeSizes(roots []string, workers int, cancel <-chan struct{}, onVisit func
 					continue
 				}
 				if info, ierr := e.Info(); ierr == nil {
-					sum += info.Size()
+					sum += FileBytes(info)
 				}
 			}
 			if sum != 0 {
@@ -581,7 +599,7 @@ func (s *Scanner) Scan(roots []string, ruleIDs []string) Result {
 				}
 			}
 
-			if j.depth > 0 && skipMatch(lower) {
+			if j.depth > 0 && skipMatch(j.dir, lower) {
 				skipped.Add(1)
 				return nil
 			}
