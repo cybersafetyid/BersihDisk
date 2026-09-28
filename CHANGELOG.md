@@ -10,6 +10,24 @@ each release is tagged `vX.Y.Z`.
 
 [Riwayat versi Bahasa Indonesia →](#catatan-versi-bahasa-indonesia)
 
+## [1.0.1] - 2026-09-28
+
+### Added
+
+- add smooth menu animations and capitalize app name to BersihDisk (`90fe9eb`)
+- support semantic version bumping in Makefile and bump version to 1.0.1 (`ae25ef9`)
+
+### Changed
+
+- update contributing and README files (`de90764`)
+- build and release macOS dmg, Windows exe and Linux deb from the same scripts (`29124d3`)
+- skip the macOS-only symlinked cache test on Windows (`3686825`)
+
+### Fixed
+
+- run recipes under /bin/sh and source release notes from CHANGELOG (`983d6f4`)
+- harden delete, update and scan paths; remember window state; edge-to-edge icon (`b256ab9`)
+
 ## [1.0.0] - 2026-09-27
 
 The first public release. This entry is written by hand because it predates the
