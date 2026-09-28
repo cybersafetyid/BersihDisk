@@ -10,6 +10,12 @@ each release is tagged `vX.Y.Z`.
 
 [Riwayat versi Bahasa Indonesia →](#catatan-versi-bahasa-indonesia)
 
+## [1.0.2] - 2026-09-28
+
+### Fixed
+
+- quit app on macOS during updates to allow replacing running bundle (`19d7e0f`)
+
 ## [1.0.1] - 2026-09-28
 
 ### Added
