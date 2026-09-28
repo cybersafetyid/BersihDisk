@@ -97,6 +97,7 @@ func TestAllRuleIDsUnique(t *testing.T) {
 func TestAssessFlagsProjectlessAndRiskyItems(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows reads its home folder from here
 
 	proj := filepath.Join(home, "dev", "app")
 	if err := os.MkdirAll(filepath.Join(proj, "node_modules"), 0o755); err != nil {

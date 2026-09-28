@@ -105,6 +105,7 @@ func TestContextFlagsInstalledSoftware(t *testing.T) {
 func TestAssessCombinesBaseAndContext(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows reads its home folder from here
 	project := filepath.Join(home, "dev", "app", "node_modules")
 
 	if a := Assess(project, Safe); a.Level != Safe || len(a.Reasons) != 0 {

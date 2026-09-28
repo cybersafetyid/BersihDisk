@@ -299,6 +299,7 @@ func TestScanResolvesSymlinkedHomeCache(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home) // Windows reads its home folder from here
 
 	resolved, err := filepath.EvalSymlinks(target)
 	if err != nil {
