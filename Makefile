@@ -10,12 +10,15 @@
 #   make test            — Go unit tests + frontend typecheck
 #   make bump patch|minor|major — bump the version (or: make bump VER=1.2.3)
 #   make package         — build + package THIS OS into dist/ (dmg / exe+zip / deb+tar.gz)
-#   make release         — verify, package, then CHANGELOG entry + tag
-#   make changelog       — prepend the CHANGELOG entry built from git commits
-#   make publish         — create/update the GitHub release with everything in dist/
+#   make release         — local dry run: verify + package this OS (publishes nothing)
+#   make changelog       — write the CHANGELOG entry and commit "chore: release X"
+#   make publish         — release commit + tag v<VERSION> + push; GitHub Actions
+#                          builds every OS and creates the release
 #
-# CI (.github/workflows) runs scripts/package.sh and scripts/publish.sh — the same
-# scripts behind `make package` and `make publish` — once per operating system.
+# Releasing: make bump patch → make publish. `publish` writes the CHANGELOG entry,
+# commits "chore: release <version>", tags, and pushes the branch and the tag.
+# CI (.github/workflows/release.yml) runs scripts/package.sh on macOS, Windows and
+# Linux — the same script as `make package` — then scripts/publish.sh.
 # =============================================================================
 
 # ---- Configuration ----------------------------------------------------------
@@ -57,6 +60,9 @@ DIST_DIR      := dist
 
 # Changelog: entries are generated from Conventional Commit subjects.
 CHANGELOG     := CHANGELOG.md
+
+# When this make run started: only a Release workflow run created after it is watched.
+PUBLISH_START := $(shell date -u +%s)
 CHANGELOG_SH  := scripts/changelog.sh
 
 # macOS build targets.
@@ -72,7 +78,7 @@ ICON_VARIANTS := frontend/src/assets/icons
 .PHONY: help run dev build package verify build-darwin build-windows build-linux build-all \
         frontend frontend-dev test test-go test-frontend vet lint fmt tidy \
         check clean distclean bump patch minor major release release-version \
-        changelog changelog-preview tag release-notes publish \
+        changelog changelog-preview tag release-notes publish publish-local \
         install-deps install-wails-fix doctor icons
 
 # =============================================================================
@@ -161,8 +167,12 @@ test-frontend:
 	@echo "▶ Frontend typecheck..."
 	cd frontend && npx tsc --noEmit
 
-## vet: go vet on all packages
-vet:
+# main.go embeds frontend/dist, so vet cannot even compile a fresh checkout without it.
+frontend/dist/index.html:
+	cd frontend && $(NPM) install && $(NPM) run build
+
+## vet: go vet on all packages (builds the frontend first when frontend/dist is missing)
+vet: frontend/dist/index.html
 	$(GO) vet $(GO_TAGS) ./...
 
 ## fmt: format all Go files
@@ -248,22 +258,21 @@ endif
 package:
 	WAILS="$(WAILS)" VERSION="$(VERSION)" REPO="$(REPO)" DIST="$(DIST)" bash scripts/package.sh
 
-## release: verify + package this OS, then write the CHANGELOG entry and tag
+## release: local dry run — verify + package THIS OS, exactly what CI builds (publishes nothing)
 release: verify package
-	@$(MAKE) --no-print-directory release-finalize
 
-## release-finalize: CHANGELOG entry + git tag + GitHub notes, when history exists
-release-finalize:
-	@if git rev-parse --verify HEAD >/dev/null 2>&1; then \
-		$(MAKE) --no-print-directory changelog tag release-notes; \
-	else \
-		echo "⚠ No git history — skipped CHANGELOG entry and v$(VERSION) tag."; \
-		echo "  Fix with: git init && git add -A && git commit -m 'chore: initial commit' && make release"; \
-	fi
-
-## changelog: prepend the generated entry for the current version into CHANGELOG.md
+## changelog: write the CHANGELOG entry for VERSION, then commit everything as "chore: release <VERSION>" (COMMIT=0 to skip the commit)
 changelog:
 	@$(CHANGELOG_SH) --write $(VERSION)
+	@if [ "$(COMMIT)" = "0" ]; then \
+		echo "ℹ COMMIT=0 — leaving the changes uncommitted"; \
+	elif [ -z "$$(git status --porcelain --untracked-files=no)" ]; then \
+		echo "✔ Nothing to commit — v$(VERSION) is already committed"; \
+	else \
+		echo "▶ git commit -am \"chore: release $(VERSION)\":"; \
+		git status --short --untracked-files=no; \
+		git commit -q -am "chore: release $(VERSION)" && echo "✔ Committed chore: release $(VERSION)"; \
+	fi
 
 ## changelog-preview: print that entry to stdout without writing the file
 changelog-preview:
@@ -285,15 +294,32 @@ release-notes:
 		> $(DIST_DIR)/$(APP_TITLE)-v$(VERSION)-notes.md
 	@echo "✔ Notes: $(DIST_DIR)/$(APP_TITLE)-v$(VERSION)-notes.md"
 
-## publish: push the tag, then create/update the GitHub release from dist/ (PUBLISH_FLAGS=--prune --update-notes)
-publish: release-notes
+## publish: release commit, tag v$(VERSION), push branch + tag — GitHub Actions then builds macOS/Windows/Linux and creates the release (WATCH=0 to not wait)
+publish: verify
 	@command -v $(GH) >/dev/null 2>&1 || { echo "✘ $(GH) not found (brew install gh && gh auth login)"; exit 1; }
-	@git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null || \
-		{ echo "✘ No local tag v$(VERSION) — run 'make tag' first"; exit 1; }
-	@if [ -n "$$(git status --porcelain)" ] && [ -z "$(ALLOW_DIRTY)" ]; then \
-		echo "✘ Working tree is dirty — v$(VERSION) would not match the files you are releasing."; \
-		echo "  Commit the changes, or re-run with ALLOW_DIRTY=1 to publish anyway."; exit 1; \
+	@# The release commit: a missing CHANGELOG entry, or uncommitted changes such as the
+	@# version bump, are written and committed as "chore: release $(VERSION)" first.
+	@if ! grep -q '^## \[$(VERSION)\]' $(CHANGELOG) || \
+		{ [ -n "$$(git status --porcelain --untracked-files=no)" ] && [ -z "$(ALLOW_DIRTY)" ]; }; then \
+		$(MAKE) --no-print-directory changelog; \
 	fi
+	@if [ -n "$$(git status --porcelain)" ] && [ -z "$(ALLOW_DIRTY)" ]; then \
+		echo "✘ Untracked files would not be part of v$(VERSION):"; git status --short; \
+		echo "  Add or remove them, or re-run with ALLOW_DIRTY=1."; exit 1; \
+	fi
+	@# A tag that was never pushed and lags HEAD (made by an earlier run, before the last
+	@# commits) would release stale code. Retag it, or stop.
+	@if git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null && \
+		[ -z "$$(git ls-remote origin -t "refs/tags/v$(VERSION)" | cut -f1)" ] && \
+		[ "$$(git rev-list -n1 v$(VERSION))" != "$$(git rev-parse HEAD)" ]; then \
+		if [ "$(RETAG)" = "1" ]; then \
+			echo "▶ Moving unpushed tag v$(VERSION) to HEAD"; git tag -d "v$(VERSION)" >/dev/null; \
+		else \
+			echo "✘ Local tag v$(VERSION) is behind HEAD and was never pushed, so it would release older code."; \
+			echo "  Move it with: make publish RETAG=1   (or: git tag -d v$(VERSION))"; exit 1; \
+		fi; \
+	fi
+	@$(MAKE) --no-print-directory tag
 	@branch=$$(git rev-parse --abbrev-ref HEAD); \
 	tag_commit=$$(git rev-list -n1 v$(VERSION)); \
 	if ! git merge-base --is-ancestor "$$tag_commit" HEAD; then \
@@ -301,23 +327,38 @@ publish: release-notes
 		echo "  Delete it (git tag -d v$(VERSION)) and run 'make tag' on the commit to release."; \
 		exit 1; \
 	fi; \
-	if [ "$$tag_commit" != "$$(git rev-parse HEAD)" ]; then \
-		echo "ℹ Releasing $$tag_commit — HEAD is $$(git rev-parse --short HEAD)"; \
-	fi; \
 	remote_head=$$(git ls-remote origin -h "refs/heads/$$branch" | cut -f1); \
 	if [ -z "$$remote_head" ] || ! git merge-base --is-ancestor "$$tag_commit" "$$remote_head"; then \
 		echo "▶ origin/$$branch does not contain the tagged commit — pushing $$branch"; \
 		$(GIT_PUSH) origin "$$branch"; \
 	fi; \
-	if [ "$$(git ls-remote origin -t "refs/tags/v$(VERSION)" | cut -f1)" != "$$tag_commit" ]; then \
-		echo "▶ Pushing annotated tag v$(VERSION) to origin"; \
+	if [ "$$(git ls-remote origin -t "refs/tags/v$(VERSION)" | cut -f1)" = "$$tag_commit" ]; then \
+		echo "▶ v$(VERSION) is already on origin — re-running the release workflow"; \
+		$(GH) workflow run release.yml -R $(REPO) -f tag=v$(VERSION) -f ref=v$(VERSION); \
+	else \
+		echo "▶ Pushing annotated tag v$(VERSION) — this starts the Release workflow"; \
 		$(GIT_PUSH) origin "refs/tags/v$(VERSION)"; \
 	fi
+	@if [ "$(WATCH)" != "0" ]; then \
+		echo "▶ Waiting for the Release workflow (Ctrl-C stops watching, not the build)..."; \
+		id=""; for i in 1 2 3 4 5 6 7 8 9 10; do \
+			id=$$($(GH) run list -R $(REPO) --workflow release.yml --limit 5 --json databaseId,createdAt \
+				-q '[.[] | select((.createdAt | fromdateiso8601) >= $(PUBLISH_START) - 120)] | sort_by(.createdAt) | reverse | .[0].databaseId // empty' 2>/dev/null); \
+			[ -n "$$id" ] && break; sleep 3; \
+		done; \
+		[ -n "$$id" ] && $(GH) run watch "$$id" -R $(REPO) --exit-status; \
+	fi
+	@echo "✔ https://github.com/$(REPO)/releases/tag/v$(VERSION)"
+
+## publish-local: upload the artifacts built on THIS machine (dist/) to the release — an escape hatch, CI is the normal path
+publish-local: release-notes
 	@VERSION="$(VERSION)" REPO="$(REPO)" DIST="$(DIST_DIR)" GH="$(GH)" bash scripts/publish.sh $(PUBLISH_FLAGS)
 
-## release-version: bump to VER=x.y.z then release (one-shot)
-release-version: bump
-	$(MAKE) release
+## release-version: bump to VER=x.y.z, write the CHANGELOG entry and commit it (then make publish)
+release-version:
+	@$(MAKE) --no-print-directory bump VER=$(VER)
+	@$(MAKE) --no-print-directory changelog
+	@echo "✔ $(APP_TITLE) $$(cat $(VERSION_FILE)) is committed. Next: make publish"
 
 # =============================================================================
 # Maintenance

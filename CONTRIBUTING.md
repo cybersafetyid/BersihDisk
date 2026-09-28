@@ -62,7 +62,7 @@ Everything is driven by `make` (run `make help` for the full list).
 | `make verify` | what CI runs: gofmt, vet, tests, typecheck (no build) |
 | `make build-all` | build every platform (needs cross toolchains; CI packages each OS natively) |
 | `make bump patch\|minor\|major` | semantic bump of `VERSION`, `wails.json`, `frontend/package.json` (or `make bump VER=1.2.3` for an exact version) |
-| `make release` | `make verify` + package this OS into `dist/`, then CHANGELOG + tag |
+| `make release` | local dry run: `make verify` + package this OS (publishes nothing) |
 
 ### 4. Project layout
 
@@ -159,15 +159,17 @@ git push -u origin feat/your-topic
 ### 9. Changelog and release tags
 
 `CHANGELOG.md` is not maintained by hand. `scripts/changelog.sh` builds each
-entry from the commit subjects since the previous tag, and `make release` runs it
-for you:
+entry from the commit subjects since the previous tag. `make changelog` writes the
+entry and commits with `git commit -am "chore: release <version>"` — that commits
+every modified tracked file, so keep unrelated work out of the tree (or pass
+`COMMIT=0`). `make publish` runs it for you when needed:
 
 ```bash
 make changelog-preview   # see exactly what would be written for VERSION
 make changelog           # prepend the entry into CHANGELOG.md
-make tag                 # annotate HEAD as v<version>
-make release             # verify + package (this OS), then changelog + tag + notes
-make publish             # push the tag, then create/update the GitHub release from dist/
+make bump patch          # or minor | major: version files
+make publish             # CHANGELOG entry + "chore: release x.y.z" commit + tag + push
+                         # → GitHub Actions builds every OS and creates the release
 ```
 
 This is why the commit prefixes in step 8 are mandatory rather than stylistic:
@@ -177,13 +179,15 @@ before the colon marks the line **Breaking**. A subject with no prefix still
 appears, but under **Other** — so tag your work.
 
 `make publish` is the step that touches the remote: it pushes the branch and the
-annotated tag when they are missing, and releases with `--verify-tag` so a tag you
-never pushed cannot be replaced by one gh invents from the default branch. It also
-stops on a dirty working tree unless you pass `ALLOW_DIRTY=1`; use
+annotated tag when they are missing, and the pushed tag starts the Release workflow,
+which builds macOS, Windows and Linux and creates the release with `--verify-tag`.
+It writes and commits the CHANGELOG entry first when it is missing, stops on
+untracked files (`ALLOW_DIRTY=1` overrides) and on an unpushed tag that lags HEAD
+(`RETAG=1` moves it); use
 `make publish GH=echo GIT_PUSH=echo` to preview the commands.
 
 The notes uploaded to GitHub come from the CHANGELOG section when the version is
-already listed there, so editing that entry before `make publish` is enough to
+already listed there, so editing that entry (and committing it) before `make publish` is enough to
 fix the wording of a release.
 
 A version without a `vX.Y.Z` tag is not a release: the in-app updater compares

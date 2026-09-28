@@ -4,7 +4,7 @@ name: Release
 # scripts/package.sh (the same script as `make package`), then attaches every
 # artifact to the GitHub release with scripts/publish.sh (`make publish`).
 #
-#   • Push a tag vX.Y.Z              → build that tag, create the release
+#   • Push a tag vX.Y.Z (`make publish` does it) → build that tag, create the release
 #   • Run manually (workflow_dispatch) → build `ref`, create or update release `tag`
 #     (re-running replaces the assets; stale ones are pruned)
 on:

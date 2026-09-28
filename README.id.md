@@ -172,13 +172,14 @@ Perintah harian lewat `make` (lihat `make help`):
 | `make lint` | vet + typecheck + build frontend |
 | `make bump patch\|minor\|major` | bump semantik (1.2.3 → 1.2.4 / 1.3.0 / 2.0.0) di `VERSION`, `wails.json`, `package.json` |
 | `make bump VER=1.2.3` | set versi persis |
-| `make release` | verify + package, lalu entri CHANGELOG + tag |
-| `make release-version VER=x.y.z` | bump lalu release sekaligus |
+| `make release` | uji coba lokal: verify + package OS ini (tidak menerbitkan apa pun) |
+| `make release-version VER=x.y.z` | bump lalu tulis entri CHANGELOG (lalu commit dan `make publish`) |
 | `make changelog-preview` | cetak entri CHANGELOG untuk versi saat ini |
 | `make changelog` | sisipkan entri itu ke `CHANGELOG.md` |
 | `make tag` | buat git tag anotasi `v<versi>` pada HEAD |
 | `make release-notes` | tulis `dist/BersihDisk-v<versi>-notes.md` dari entri |
-| `make publish` | dorong tag, lalu buat/perbarui release GitHub dari `dist/` |
+| `make publish` | tag `v<versi>` lalu dorong: GitHub Actions membangun tiga OS dan membuat release |
+| `make publish-local` | unggah artefak hasil build mesin ini (`dist/`) — jalur darurat |
 | `make install-deps` / `make doctor` | pasang dependensi frontend / cek toolchain |
 | `make install-wails-fix` | build CLI wails yang kompatibel Go ≥ 1.24 |
 | `make clean` / `distclean` | bersihkan build / + `node_modules` |
@@ -190,11 +191,28 @@ metadata bundle melalui `{{.Info.ProductVersion}}` di `build/darwin/Info.plist`.
 **Menerbitkan rilis yang bisa memperbarui diri:**
 
 ```bash
-make release-version VER=1.1.0   # bump + verify + paket (OS ini) + CHANGELOG + tag
-git push origin main             # lalu biarkan CI yang merilis …
-git push origin v1.1.0           #   … dengan mendorong tag (tiga OS sekaligus), atau
-make publish                     #   … rilis hasil build mesin ini
+make bump patch        # atau minor | major, atau VER=1.2.3 — VERSION, wails.json, package.json
+make publish           # release commit + tag + push; GitHub Actions sisanya
 ```
+
+`make publish` mengerjakan semuanya sampai push, lalu menyerahkan ke CI:
+
+1. `make verify` (gofmt, vet, tes, typecheck).
+2. Commit rilis: bila CHANGELOG belum punya entri versi itu, atau bump belum di-commit,
+   ia menjalankan `make changelog`, yang menulis entri dari subjek commit lalu
+   `git commit -am "chore: release 1.0.1"`. **`-am` meng-commit semua file
+   terlacak yang berubah**, jadi commit atau stash dulu pekerjaan lain
+   (`make changelog COMMIT=0` menulis entri tanpa commit).
+3. Tag `v1.0.1`, dorong branch dan tag. Tag itu menjalankan `release.yml`, yang
+   membangun dan mengemas macOS, Windows, Linux lalu membuat release GitHub. Tidak
+   ada yang diunggah dari mesinmu.
+4. Memantau workflow (`WATCH=0` untuk melewatinya).
+
+Ia menolak file untracked dan tag lokal yang tertinggal dari HEAD (`RETAG=1`
+memindahkannya). Bila tag sudah ada di origin, workflow untuk tag itu dijalankan
+ulang. `make publish GH=echo GIT_PUSH=echo` mencetak perintah git/gh tanpa
+menjalankannya. `make release` membangun OS ini secara lokal untuk mengecek apa yang
+akan dibangun CI.
 
 **CI/CD (GitHub Actions)** di `.github/workflows/`: `ci.yml` (tiap push ke `main`
 dan pull request: gofmt, vet, tes Go, typecheck di Ubuntu, macOS, Windows) dan
@@ -308,7 +326,7 @@ dipakai:
 | `feat!:` / `fix(scope)!:` | ditandai `**Breaking**` di sektornya |
 
 Setiap baris membawa short hash commit-nya, jadi entri bisa ditelusuri ke
-diff-nya. `make publish` mengunggah **entri CHANGELOG yang sudah dikurasi** sebagai
+diff-nya. Workflow rilis mengunggah **entri CHANGELOG yang sudah dikurasi** sebagai
 notes release bila versinya sudah tercatat di sana, dan baru memakai hasil generate
 commit bila belum.
 
@@ -319,20 +337,16 @@ menjadi rilis.
 ```bash
 make changelog-preview              # uji cetak: entri untuk VERSION
 make changelog                      # sisipkan entri itu ke CHANGELOG.md
-make tag                            # git tag -a v<versi>
-make release                        # check + build + paket, lalu changelog + tag + notes
-make publish                        # dorong tag, lalu buat release GitHub
+make tag                            # git tag -a v<versi> (make publish melakukannya)
+make release                        # uji coba lokal: verify + paket OS ini
+make publish                        # tag + dorong → GitHub Actions membangun dan merilis
 ```
 
 `make publish` adalah satu-satunya target yang menulis ke remote: ia mendorong branch
-saat commit yang di-tag belum ada di sana, mendorong tag anotasi, lalu membuat release
-dengan `--verify-tag` sehingga `gh` tidak bisa mengarang tag dari commit yang bukan
-maksudmu. Target ini menolak working tree yang kotor kecuali kamu kirim
-`ALLOW_DIRTY=1`, dan `make publish GH=echo GIT_PUSH=echo` menampilkan perintah aslinya
-tanpa menjalankannya.
-
-`make release` tidak mengarang riwayat: tanpa commit ia memberi peringatan dan
-melewati entri beserta tag, alih-alih menulis entri kosong.
+saat commit yang di-tag belum ada di sana dan mendorong tag anotasi; release-nya
+dibuat workflow dengan `--verify-tag` sehingga `gh` tidak bisa mengarang tag dari
+commit yang bukan maksudmu. Target ini menolak working tree yang kotor kecuali kamu
+kirim `ALLOW_DIRTY=1`.
 
 ## 🤝 Kontribusi
 

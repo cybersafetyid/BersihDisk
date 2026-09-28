@@ -190,13 +190,14 @@ same script.
 | `make fmt` / `make vet` / `make tidy` | Go hygiene |
 | `make bump patch\|minor\|major` | semantic bump (1.2.3 → 1.2.4 / 1.3.0 / 2.0.0) in `VERSION`, `wails.json`, `package.json` |
 | `make bump VER=1.2.3` | set an exact version |
-| `make release` | verify + package, then CHANGELOG entry + `v<version>` tag |
-| `make release-version VER=1.2.3` | bump and release in one step |
+| `make release` | local dry run: verify + package this OS (publishes nothing) |
+| `make release-version VER=1.2.3` | bump and write the CHANGELOG entry (then commit and `make publish`) |
 | `make changelog-preview` | print the CHANGELOG entry for the current version |
 | `make changelog` | prepend that entry into `CHANGELOG.md` |
 | `make tag` | create the annotated git tag `v<version>` on HEAD |
 | `make release-notes` | write `dist/BersihDisk-v<version>-notes.md` from the entry |
-| `make publish` | push the tag, then create/update the GitHub release from `dist/` |
+| `make publish` | tag `v<version>` and push it: GitHub Actions builds all three OSes and creates the release |
+| `make publish-local` | upload the artifacts built on this machine (`dist/`) — escape hatch |
 | `make install-deps` | install frontend dependencies |
 | `make doctor` | verify the toolchain (go, node, wails) |
 | `make install-wails-fix` | build the Go ≥ 1.24 compatible Wails CLI |
@@ -227,11 +228,27 @@ The workflows only call the repository's own scripts, so a local run produces th
 same artifacts:
 
 ```bash
-make release-version VER=1.1.0   # bump + verify + package (this OS) + CHANGELOG + tag
-git push origin main             # then either let CI publish …
-git push origin v1.1.0           #   … by pushing the tag (all three OSes), or
-make publish                     #   … publish what this machine built
+make bump patch        # or minor | major, or VER=1.2.3 — VERSION, wails.json, package.json
+make publish           # release commit + tag + push; GitHub Actions does the rest
 ```
+
+`make publish` does everything up to the push, then hands over to CI:
+
+1. `make verify` (gofmt, vet, tests, typecheck).
+2. The release commit: when the CHANGELOG has no entry for the version, or the bump
+   is uncommitted, it runs `make changelog`, which writes the entry from the commit
+   subjects and runs `git commit -am "chore: release 1.0.1"`. **`-am` commits every
+   modified tracked file**, so commit or stash unrelated work first (`make changelog
+   COMMIT=0` writes the entry without committing).
+3. Tag `v1.0.1`, push the branch and the tag. The tag starts `release.yml`, which
+   builds and packages macOS, Windows and Linux and creates the GitHub release.
+   Nothing is uploaded from your machine.
+4. Watch the workflow (`WATCH=0` skips this).
+
+It refuses untracked files and a local tag that lags HEAD (`RETAG=1` moves it). If
+the tag is already on origin it re-runs the workflow for that tag instead.
+`make publish GH=echo GIT_PUSH=echo` prints the git/gh commands without running
+them. `make release` builds this OS locally, to check what CI will build.
 
 **The naming contract.** `scripts/package.sh` names files
 `BersihDisk-vX.Y.Z-<os>-<arch>[-kind].<ext>`; `internal/updater` picks the asset
@@ -372,7 +389,7 @@ are required:
 | `feat!:` / `fix(scope)!:` | marked `**Breaking**` in its section |
 
 Each line keeps its short commit hash, so any entry can be traced back to the
-diff. `make publish` uploads the **curated CHANGELOG section** as the release
+diff. The release workflow uploads the **curated CHANGELOG section** as the release
 notes when that version is already listed, and falls back to the freshly generated
 commit list otherwise.
 
@@ -382,19 +399,16 @@ the in-app updater compares against, so a version without a tag is not a release
 ```bash
 make changelog-preview              # dry run: print the entry for VERSION
 make changelog                      # prepend it into CHANGELOG.md
-make tag                            # git tag -a v<version>
-make release                        # check + build + package, then changelog + tag + notes
-make publish                        # push the tag, then the GitHub release
+make tag                            # git tag -a v<version> (make publish does this)
+make release                        # local dry run: verify + package this OS
+make publish                        # tag + push → GitHub Actions builds and releases
 ```
 
 `make publish` is the only target that writes to the remote: it pushes the current
-branch when the tagged commit is missing there, pushes the annotated tag, and then
-creates the release with `--verify-tag`, so `gh` can never invent a tag from a commit
-you did not intend. It refuses a dirty working tree unless you pass `ALLOW_DIRTY=1`,
-and `make publish GH=echo GIT_PUSH=echo` shows the exact commands without running them.
-
-`make release` will not invent history: with no commits it warns and skips the
-entry and the tag instead of writing an empty one.
+branch when the tagged commit is missing there and pushes the annotated tag; the
+release itself is created by the workflow with `--verify-tag`, so `gh` can never
+invent a tag from a commit you did not intend. It refuses a dirty working tree
+unless you pass `ALLOW_DIRTY=1`.
 
 ## 🤝 Contributing
 
