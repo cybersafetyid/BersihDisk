@@ -284,6 +284,9 @@ func TestScanPrefersSpecificMultiSegmentPattern(t *testing.T) {
 // A cache moved behind a symlink is measured at its real location — that is where
 // the disk actually goes — and the link is kept so the UI can explain it.
 func TestScanResolvesSymlinkedHomeCache(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the Xcode home paths are macOS-only, and Windows symlinks need extra privileges")
+	}
 	root := t.TempDir()
 	home := filepath.Join(root, "home")
 	link := filepath.Join(home, "Library", "Developer", "Xcode", "DerivedData")
