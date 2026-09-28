@@ -10,6 +10,12 @@ each release is tagged `vX.Y.Z`.
 
 [Riwayat versi Bahasa Indonesia →](#catatan-versi-bahasa-indonesia)
 
+## [1.1.0] - 2026-09-28
+
+### Added
+
+- add comprehensive application uninstaller and safety risk assessment framework (`c3f6c40`)
+
 ## [1.0.3] - 2026-09-28
 
 ### Added
