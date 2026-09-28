@@ -8,7 +8,7 @@
 #   make build           — production build for the current OS
 #   make build-all       — cross-compile for macOS / Windows / Linux
 #   make test            — Go unit tests + frontend typecheck
-#   make bump VER=1.2.3  — set version in VERSION, wails.json, package.json
+#   make bump patch|minor|major — bump the version (or: make bump VER=1.2.3)
 #   make package         — build + package THIS OS into dist/ (dmg / exe+zip / deb+tar.gz)
 #   make release         — verify, package, then CHANGELOG entry + tag
 #   make changelog       — prepend the CHANGELOG entry built from git commits
@@ -191,12 +191,27 @@ tidy:
 # Version management
 # =============================================================================
 
-## bump: set version to VER=x.y.z in VERSION, wails.json, and app.go
+# `make bump patch|minor|major` bumps by level; `make bump VER=1.2.3` sets it exactly.
+# The level word after `bump` is an argument, not a second goal, so it is computed
+# into VER here and the matching aliases below are replaced by a no-op.
+BUMP_ARG   := $(if $(filter bump,$(firstword $(MAKECMDGOALS))),$(word 2,$(MAKECMDGOALS)))
+BUMP_LEVEL := $(filter patch minor major,$(BUMP_ARG))
+ifneq ($(BUMP_ARG),)
+ifeq ($(BUMP_LEVEL),)
+$(error Unknown bump level '$(BUMP_ARG)' — use: make bump patch|minor|major, or make bump VER=1.2.3)
+endif
+VER ?= $(shell awk -F. -v level=$(BUMP_LEVEL) 'BEGIN { OFS = "." } \
+	level == "major" { print $$1 + 1, 0, 0 } \
+	level == "minor" { print $$1, $$2 + 1, 0 } \
+	level == "patch" { print $$1, $$2, $$3 + 1 }' $(VERSION_FILE))
+endif
+
+## bump: set the version — make bump patch|minor|major, or make bump VER=1.2.3 (VERSION, wails.json, package.json)
 bump:
 ifndef VER
-	$(error Usage: make bump VER=1.2.3)
+	$(error Usage: make bump patch|minor|major   or   make bump VER=1.2.3)
 endif
-	@echo "▶ Bumping version -> $(VER)"
+	@echo "▶ Bumping version $(VERSION) -> $(VER)"
 	printf '%s\n' '$(VER)' > $(VERSION_FILE)
 	@# wails.json Info.productVersion
 	@$(NPM) --prefix frontend exec --yes json@2 \
@@ -207,17 +222,23 @@ endif
 	@cd frontend && $(NPM) version $(VER) --no-git-tag-version --allow-same-version >/dev/null
 	@echo "✔ Version is now $(VERSION_FILE)=`cat $(VERSION_FILE)`"
 
-## patch: bump PATCH digit (1.2.3 -> 1.2.4)
+ifeq ($(BUMP_LEVEL),)
+## patch: bump PATCH digit (1.2.3 -> 1.2.4); same as make bump patch
 patch:
-	$(MAKE) bump VER=$$(awk -F. '{printf "%d.%d.%d", $$1, $$2, $$3+1}' $(VERSION_FILE))
+	$(MAKE) bump patch
 
-## minor: bump MINOR digit, reset patch (1.2.3 -> 1.3.0)
+## minor: bump MINOR digit, reset patch (1.2.3 -> 1.3.0); same as make bump minor
 minor:
-	$(MAKE) bump VER=$$(awk -F. '{printf "%d.%d.0", $$1, $$2+1}' $(VERSION_FILE))
+	$(MAKE) bump minor
 
-## major: bump MAJOR digit, reset minor+patch (1.2.3 -> 2.0.0)
+## major: bump MAJOR digit, reset minor+patch (1.2.3 -> 2.0.0); same as make bump major
 major:
-	$(MAKE) bump VER=$$(awk -F. '{printf "%d.0.0", $$1+1}' $(VERSION_FILE))
+	$(MAKE) bump major
+else
+# `make bump patch`: the word `patch` is consumed above, so it must do nothing.
+$(BUMP_LEVEL):
+	@:
+endif
 
 # =============================================================================
 # Release & packaging

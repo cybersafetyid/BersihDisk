@@ -170,8 +170,8 @@ Perintah harian lewat `make` (lihat `make help`):
 | `make test` | unit test Go (`-race`) + typecheck frontend |
 | `make check` | verifikasi pra-commit penuh (fmt, vet, test, build) |
 | `make lint` | vet + typecheck + build frontend |
-| `make bump VER=1.2.3` | set versi di `VERSION`, `wails.json`, `package.json` |
-| `make patch` / `minor` / `major` | bump versi semantik otomatis |
+| `make bump patch\|minor\|major` | bump semantik (1.2.3 → 1.2.4 / 1.3.0 / 2.0.0) di `VERSION`, `wails.json`, `package.json` |
+| `make bump VER=1.2.3` | set versi persis |
 | `make release` | verify + package, lalu entri CHANGELOG + tag |
 | `make release-version VER=x.y.z` | bump lalu release sekaligus |
 | `make changelog-preview` | cetak entri CHANGELOG untuk versi saat ini |

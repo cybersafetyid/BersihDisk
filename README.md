@@ -188,8 +188,8 @@ same script.
 | `make check` | full pre-commit gate: fmt, vet, tests, build |
 | `make lint` | vet + typecheck + frontend build |
 | `make fmt` / `make vet` / `make tidy` | Go hygiene |
-| `make bump VER=1.2.3` | set the version in `VERSION`, `wails.json`, `package.json` |
-| `make patch` / `minor` / `major` | semantic version bumps |
+| `make bump patch\|minor\|major` | semantic bump (1.2.3 → 1.2.4 / 1.3.0 / 2.0.0) in `VERSION`, `wails.json`, `package.json` |
+| `make bump VER=1.2.3` | set an exact version |
 | `make release` | verify + package, then CHANGELOG entry + `v<version>` tag |
 | `make release-version VER=1.2.3` | bump and release in one step |
 | `make changelog-preview` | print the CHANGELOG entry for the current version |

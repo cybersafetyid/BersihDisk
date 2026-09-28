@@ -61,7 +61,7 @@ Everything is driven by `make` (run `make help` for the full list).
 | `make package` | build + package the current OS into `dist/` (`.dmg` / setup `.exe` + `.zip` / `.deb` + `.tar.gz`) |
 | `make verify` | what CI runs: gofmt, vet, tests, typecheck (no build) |
 | `make build-all` | build every platform (needs cross toolchains; CI packages each OS natively) |
-| `make bump VER=1.2.3` | update `VERSION`, `wails.json`, `frontend/package.json` |
+| `make bump patch\|minor\|major` | semantic bump of `VERSION`, `wails.json`, `frontend/package.json` (or `make bump VER=1.2.3` for an exact version) |
 | `make release` | `make verify` + package this OS into `dist/`, then CHANGELOG + tag |
 
 ### 4. Project layout
