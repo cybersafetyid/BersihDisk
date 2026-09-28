@@ -52,6 +52,13 @@ const id = {
   category: {
     step: "2 · Pilih kategori pembersihan",
     optional: "Opsional",
+    select: "Pilih",
+    selectAll: "Pilih semua",
+    selectNone: "Kosongkan semua",
+    selectNoNote: "Pilih tanpa catatan",
+    view: "Tampilan",
+    viewGrid: "Tampilan grid",
+    viewList: "Tampilan daftar",
     hasNote: "Ada catatan",
   },
   scan: {
@@ -73,6 +80,7 @@ const id = {
     skipped: "· {count} folder sistem dilewati",
     selectLarge: "Pilih ≥ 100 MB",
     selectAll: "Pilih semua",
+    empty: "Tidak ada yang tersisa di hasil ini. Tekan “Scan ulang” untuk memeriksa lagi.",
     deselectAll: "Kosongkan",
     groupInfo: "{count} folder · {size}",
     deselectGroup: "Hapus pilihan",

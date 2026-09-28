@@ -113,6 +113,7 @@
 .results-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .results-groups { max-height: 46vh; overflow-y: auto; }
+.results-empty { margin: 0; padding: 28px 20px; text-align: center; color: var(--text-muted); font-size: 13.5px; }
 .group { border-bottom: 1px solid var(--border); }
 .group:last-child { border-bottom: none; }
 .group-head {

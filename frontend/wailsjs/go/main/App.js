@@ -50,6 +50,10 @@ export function ListFolder(arg1) {
   return window['go']['main']['App']['ListFolder'](arg1);
 }
 
+export function MeasurePaths(arg1) {
+  return window['go']['main']['App']['MeasurePaths'](arg1);
+}
+
 export function OpenLink(arg1) {
   return window['go']['main']['App']['OpenLink'](arg1);
 }

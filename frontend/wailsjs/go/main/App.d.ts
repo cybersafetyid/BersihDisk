@@ -29,6 +29,8 @@ export function ListCategories():Promise<Array<main.CategoryUI>>;
 
 export function ListFolder(arg1:string):Promise<Array<browser.Entry>>;
 
+export function MeasurePaths(arg1:Array<string>):Promise<Array<number>>;
+
 export function OpenLink(arg1:string):Promise<void>;
 
 export function Reveal(arg1:string):Promise<void>;

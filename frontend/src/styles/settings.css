@@ -2,6 +2,14 @@
 
 .settings-menu { position: relative; }
 
+/* Generic action menu (common/Dropdown.tsx): reuses the settings dropdown panel. */
+.dropdown { position: relative; }
+.dropdown .settings-dropdown { right: auto; left: 0; transform-origin: top left; min-width: 230px; }
+.dropdown-chevron { transition: transform 0.25s var(--ease-out); }
+.dropdown-trigger.active .dropdown-chevron { transform: rotate(180deg); }
+.dropdown .menu-label { flex: 1; }
+.dropdown .menu-check { color: var(--accent); font-weight: 800; font-size: 12px; }
+
 .settings-dropdown {
   position: absolute;
   top: calc(100% + 8px);

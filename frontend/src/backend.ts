@@ -21,6 +21,7 @@ export const appInfo = (): Promise<Record<string, unknown>> => B.AppInfo();
 
 // Folder browsing and OS handoff.
 export const listFolder = (path: string): Promise<FolderEntry[]> => B.ListFolder(path);
+export const measurePaths = (paths: string[]): Promise<number[]> => B.MeasurePaths(paths);
 export const reveal = (path: string): Promise<void> => B.Reveal(path);
 
 // In-app updates from GitHub Releases.

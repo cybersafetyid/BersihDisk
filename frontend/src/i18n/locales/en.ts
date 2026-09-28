@@ -51,6 +51,13 @@ const en = {
   category: {
     step: "2 · Choose cleanup categories",
     optional: "Optional",
+    select: "Select",
+    selectAll: "Select all",
+    selectNone: "Clear all",
+    selectNoNote: "Select without notes",
+    view: "Layout",
+    viewGrid: "Grid view",
+    viewList: "List view",
     hasNote: "Has a note",
   },
   scan: {
@@ -72,6 +79,7 @@ const en = {
     skipped: "· {count} system folders skipped",
     selectLarge: "Select ≥ 100 MB",
     selectAll: "Select all",
+    empty: "Nothing left in this scan. Go back with “Rescan” to look again.",
     deselectAll: "Clear",
     groupInfo: "{count} folders · {size}",
     deselectGroup: "Deselect",

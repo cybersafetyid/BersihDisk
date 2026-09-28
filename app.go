@@ -171,6 +171,26 @@ func (a *App) ListFolder(path string) ([]browser.Entry, error) {
 	return browser.List(path)
 }
 
+// MeasurePaths returns the current size of each scan-result path, in the order
+// given (0 for one that no longer exists), so the results page can refresh its
+// numbers after a delete without a new scan. Paths outside the scan result are
+// reported as 0.
+func (a *App) MeasurePaths(paths []string) []int64 {
+	out := make([]int64, len(paths))
+	var ok []string
+	var slots []int
+	for i, p := range paths {
+		if a.deletable(p) {
+			ok = append(ok, p)
+			slots = append(slots, i)
+		}
+	}
+	for j, size := range scanner.Sizes(ok) {
+		out[slots[j]] = size
+	}
+	return out
+}
+
 // Reveal opens a path in Finder, Explorer, or the default file manager.
 func (a *App) Reveal(path string) error {
 	return reveal.Open(path)

@@ -21,7 +21,28 @@ import { useI18n } from "./i18n/i18n";
 import { formatSize, formatNumber } from "./lib/format";
 import { isInside } from "./lib/paths";
 import * as api from "./backend";
-import type { DriveUI, CategoryUI, ScanResult, ScanProgress, DeleteProgress } from "./lib/types";
+import type { DriveUI, CategoryUI, ScanItem, ScanResult, ScanProgress, DeleteProgress } from "./lib/types";
+
+/** Totals as the scanner computes them: an item nested in another is counted once. */
+function tally(items: ScanItem[]): Pick<ScanResult, "items" | "totalBytes" | "itemCount"> {
+  const paths = new Set(items.map((i) => i.path));
+  const totalBytes = items.reduce((s, i) => (i.nestedIn && paths.has(i.nestedIn) ? s : s + i.size), 0);
+  return { items, totalBytes, itemCount: items.length };
+}
+
+/** The result without the items `isGone` says were deleted. */
+function withoutItems(r: ScanResult, isGone: (path: string) => boolean): ScanResult {
+  return { ...r, ...tally(r.items.filter((i) => !isGone(i.path))) };
+}
+
+/** The result with fresh sizes; an item that measures 0 no longer exists. */
+function resized(r: ScanResult, sizes: Map<string, number>): ScanResult {
+  const items = r.items
+    .map((i) => ({ ...i, size: sizes.get(i.path) ?? i.size }))
+    .filter((i) => i.size > 0)
+    .sort((a, b) => b.size - a.size);
+  return { ...r, ...tally(items) };
+}
 
 type Stage = "select" | "results" | "delete" | "settings";
 
@@ -45,10 +66,15 @@ export default function App() {
   const [updateSignal, setUpdateSignal] = useState(0);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const resultRef = useRef<ScanResult | null>(null);
+  resultRef.current = result;
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState<DeleteMode>("trash");
   const lastMode = useRef<DeleteMode>("trash");
+  const lastPaths = useRef<string[]>([]);
+  // Bumped after a delete so open folders in the results reload their contents.
+  const [refreshKey, setRefreshKey] = useState(0);
   const [deleteProgress, setDeleteProgress] = useState<DeleteProgress | null>(null);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const toastId = useRef(0);
@@ -111,11 +137,27 @@ export default function App() {
     const off4 = api.onDeleteFinished((r) => {
       setDeleteProgress(null);
       setConfirmOpen(false);
-      setStage("select");
-      setResult(null);
-      setScanProgress(null);
-      setSelectedItems(new Set());
-      setKnownSizes(new Map());
+      // Stay on the results so the user can pick more; only what is gone leaves the list.
+      setStage("results");
+      const failed = new Set((r.failures ?? []).map((f) => f.path));
+      const gone = lastPaths.current.filter((p) => !failed.has(p));
+      const isGone = (p: string) => gone.some((g) => p === g || isInside(p, g));
+      setSelectedItems((prev) => new Set([...prev].filter((p) => !isGone(p))));
+      setResult((prev) => (prev ? withoutItems(prev, isGone) : prev));
+      setRefreshKey((n) => n + 1);
+      // What is left may have shrunk (a child was deleted): re-measure it.
+      const left = (resultRef.current?.items ?? []).filter((i) => !isGone(i.path)).map((i) => i.path);
+      if (left.length > 0) {
+        api.measurePaths(left).then((sizes) => {
+          const fresh = new Map(left.map((p, i) => [p, sizes[i]]));
+          setResult((prev) => (prev ? resized(prev, fresh) : prev));
+          setKnownSizes((prev) => {
+            const next = new Map([...prev].filter(([p]) => !isGone(p)));
+            fresh.forEach((size, p) => size > 0 && next.set(p, size));
+            return next;
+          });
+        }).catch(() => {});
+      }
       // Free space changed; refresh the drive cards.
       api.detectDrives().then(setDrives).catch(() => {});
       // Name the first failures so the user can see which paths stayed and why.
@@ -176,6 +218,7 @@ export default function App() {
   const confirmDelete = () => {
     const paths = [...selectedItems];
     lastMode.current = deleteMode;
+    lastPaths.current = paths;
     setConfirmOpen(false);
     setStage("delete");
     setDeleteProgress({ done: 0, total: paths.length, bytes: 0, path: "" });
@@ -231,7 +274,12 @@ export default function App() {
             <DriveSelector drives={drives} selected={selectedDrives} onToggle={toggleDrive} />
 
             <h2 className="section-title">{t("category.step")}</h2>
-            <CategoryPanel categories={categories} selected={selectedCategories} onToggle={toggleCategory} />
+            <CategoryPanel
+              categories={categories}
+              selected={selectedCategories}
+              onToggle={toggleCategory}
+              onReplace={setSelectedCategories}
+            />
 
             <div className="action-bar">
               <span className="action-info">
@@ -260,6 +308,7 @@ export default function App() {
               onSelectMany={selectMany}
               onReveal={revealPath}
               onEntries={registerSizes}
+              refreshKey={refreshKey}
             />
             <div className="action-bar">
               <button className="btn btn-ghost" onClick={() => { setStage("select"); setResult(null); }}>

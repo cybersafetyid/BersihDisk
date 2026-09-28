@@ -188,9 +188,11 @@ interface Props {
   onSelectMany: (paths: string[], select: boolean) => void;
   onReveal: (path: string) => void;
   onEntries: (entries: { path: string; size: number }[]) => void;
+  /** Changes when the tree on disk changed, so open folders reload. */
+  refreshKey?: number;
 }
 
-export function ResultsPanel({ result, categories, selected, onToggleItem, onSelectMany, onReveal, onEntries }: Props) {
+export function ResultsPanel({ result, categories, selected, onToggleItem, onSelectMany, onReveal, onEntries, refreshKey = 0 }: Props) {
   const { t, p } = useI18n();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
@@ -244,6 +246,8 @@ export function ResultsPanel({ result, categories, selected, onToggleItem, onSel
         </div>
       </div>
 
+      {groups.length === 0 && <p className="results-empty">{t("results.empty")}</p>}
+
       <div className="results-groups">
         {groups.map(([catId, items]) => {
           const total = items.reduce((s, i) => s + i.size, 0);
@@ -271,7 +275,7 @@ export function ResultsPanel({ result, categories, selected, onToggleItem, onSel
                 <div className="group-body">
                   {items.map((it) => (
                     <Row
-                      key={it.path}
+                      key={`${it.path}:${refreshKey}`}
                       node={nodeFromItem(it, t)}
                       depth={0}
                       selected={selected}
