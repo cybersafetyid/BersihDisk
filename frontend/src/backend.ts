@@ -6,6 +6,7 @@ import type {
   DriveUI, CategoryUI, ScanResult, ScanProgress, DeleteProgress, DeleteResult,
   FolderEntry, UpdateInfo, UpdateProgress, UpdateResult, MachineInfo, AppInstallInfo, CacheReport,
   PackageList, UninstallPlan, UninstallProgress, UninstallResult,
+  AnalyzeResult, AnalyzeProgress,
 } from "./lib/types";
 
 const B = BackendRaw as any;
@@ -19,6 +20,16 @@ export const startDelete = (req: { paths: string[]; sizes: number[]; mode: strin
   B.StartDelete(req);
 export const cancelDelete = (): Promise<void> => B.CancelDelete();
 export const appInfo = (): Promise<Record<string, unknown>> => B.AppInfo();
+
+// Drive analyzer: size a folder's children and drill in, like a disk map.
+export const startAnalyze = (path: string): Promise<string> => B.StartAnalyze(path);
+export const cancelAnalyze = (): Promise<void> => B.CancelAnalyze();
+export function onAnalyzeProgress(cb: (p: AnalyzeProgress) => void) {
+  return EventsOn("analyze:progress", cb);
+}
+export function onAnalyzeFinished(cb: (r: AnalyzeResult) => void) {
+  return EventsOn("analyze:finished", cb);
+}
 
 // Folder browsing and OS handoff.
 export const listFolder = (path: string): Promise<FolderEntry[]> => B.ListFolder(path);

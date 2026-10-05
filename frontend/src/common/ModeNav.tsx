@@ -2,10 +2,11 @@
 import { Icon } from "./Icon";
 import { useI18n } from "../i18n/i18n";
 
-export type Mode = "clean" | "uninstall";
+export type Mode = "clean" | "analyze" | "uninstall";
 
 const modes: { key: Mode; icon: string }[] = [
   { key: "clean", icon: "eraser" },
+  { key: "analyze", icon: "pie-chart" },
   { key: "uninstall", icon: "trash" },
 ];
 

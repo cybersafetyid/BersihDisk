@@ -184,10 +184,9 @@ func withResolved(list []guardEntry) []guardEntry {
 	return out
 }
 
-// Guard reports whether path must never be deleted, with the reason code. A
-// symlink is checked twice — as written and where it points — so a link into a
-// protected folder cannot be used to get around the lists.
-func Guard(path string) (reason string, blocked bool) {
+// guardWith is Guard against an already-built set of protected paths, so a caller
+// that checks many paths (a directory listing) can build the set once.
+func guardWith(path string, exact, tree []guardEntry) (reason string, blocked bool) {
 	if path == "" || !filepath.IsAbs(path) {
 		return "relativePath", true
 	}
@@ -195,7 +194,6 @@ func Guard(path string) (reason string, blocked bool) {
 	if real, err := filepath.EvalSymlinks(path); err == nil && norm(real) != candidates[0] {
 		candidates = append(candidates, norm(real))
 	}
-	exact, tree := protectedSets()
 	for _, p := range candidates {
 		if filepath.Dir(p) == p {
 			return "filesystemRoot", true
@@ -212,6 +210,14 @@ func Guard(path string) (reason string, blocked bool) {
 		}
 	}
 	return "", false
+}
+
+// Guard reports whether path must never be deleted, with the reason code. A
+// symlink is checked twice — as written and where it points — so a link into a
+// protected folder cannot be used to get around the lists.
+func Guard(path string) (reason string, blocked bool) {
+	exact, tree := protectedSets()
+	return guardWith(path, exact, tree)
 }
 
 // PermissionHint names a known, fixable cause of a failed delete. On macOS,
@@ -329,10 +335,9 @@ func equal(a, b []string) bool {
 	return true
 }
 
-// Assess combines the hard guard, the context checks and a starting level from
-// the rule that found the path.
-func Assess(path string, base Level, baseReasons ...string) Assessment {
-	if reason, blocked := Guard(path); blocked {
+// assess is Assess against an already-built set of protected paths.
+func assess(path string, base Level, baseReasons []string, exact, tree []guardEntry) Assessment {
+	if reason, blocked := guardWith(path, exact, tree); blocked {
 		return Assessment{Level: Blocked, Reasons: []string{reason}}
 	}
 	a := Assessment{Level: Safe}
@@ -346,6 +351,29 @@ func Assess(path string, base Level, baseReasons ...string) Assessment {
 		a.Add(Danger, r)
 	}
 	return a
+}
+
+// Assess combines the hard guard, the context checks and a starting level from
+// the rule that found the path.
+func Assess(path string, base Level, baseReasons ...string) Assessment {
+	exact, tree := protectedSets()
+	return assess(path, base, baseReasons, exact, tree)
+}
+
+// AssessBatch grades many plain paths (no rule-derived starting level) with the
+// protected-path set built once. The drive analyzer lists directories that can
+// hold thousands of children, and rebuilding the set for each entry is the
+// difference between a responsive listing and a slow one.
+func AssessBatch(paths []string) []Assessment {
+	exact, tree := protectedSets()
+	out := make([]Assessment, len(paths))
+	for i, p := range paths {
+		out[i] = assess(p, "", nil, exact, tree)
+		if out[i].Level == "" {
+			out[i].Level = Safe
+		}
+	}
+	return out
 }
 
 // HasAnySibling reports whether dir holds an entry matching one of the patterns

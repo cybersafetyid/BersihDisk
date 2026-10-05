@@ -446,6 +446,13 @@ func Sizes(paths []string) []int64 {
 	return treeSizes(paths, scanWorkers(), nil, nil, nil)
 }
 
+// MeasureTree is Sizes with cancellation and a per-directory progress callback.
+// The drive analyzer uses it to size a folder's children in one pass while
+// remaining responsive to Cancel and able to publish what it is walking.
+func MeasureTree(paths []string, cancel <-chan struct{}, onVisit func(dir string)) []int64 {
+	return treeSizes(paths, scanWorkers(), cancel, onVisit, nil)
+}
+
 // treeSizes walks every root with one pool and reports each root's apparent size.
 // onVisit observes progress (current directory), and onDone fires for a root only
 // once its whole subtree has been read, so a size is never published half-made.

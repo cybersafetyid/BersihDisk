@@ -18,6 +18,10 @@ export function AppInfo() {
   return window['go']['main']['App']['AppInfo']();
 }
 
+export function CancelAnalyze() {
+  return window['go']['main']['App']['CancelAnalyze']();
+}
+
 export function CancelDelete() {
   return window['go']['main']['App']['CancelDelete']();
 }
@@ -80,6 +84,10 @@ export function Reveal(arg1) {
 
 export function SetAppIcon(arg1) {
   return window['go']['main']['App']['SetAppIcon'](arg1);
+}
+
+export function StartAnalyze(arg1) {
+  return window['go']['main']['App']['StartAnalyze'](arg1);
 }
 
 export function StartDelete(arg1) {

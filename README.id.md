@@ -65,6 +65,7 @@ unggah data.
 - **Engine dua fase** — fase *cari* (walking directory tree dengan skip-list proteksi folder sistem) lalu fase *ukur* (menghitung ukuran secara concurrent), dengan progress live dan batal
 - **Filter konten cerdas** — folder `build`/`target`/`bin`/`obj` generik hanya dihitung artefak jika isinya bukan kode sumber
 - **Telusuri isi folder** — hasil scan bisa dibuka isinya (lazy, ukuran tiap anak dihitung paralel) sehingga file/folder di dalamnya dipilih satu per satu; anak dari folder yang ikut terpilih tidak dihitung ganda
+- **Peta pemakaian drive** — mode *Pindai drive* mengukur seluruh isi drive dari yang terbesar dan menampilkannya sebagai diagram matahari gaya DaisyDisk yang bisa di-hover dan ditelusuri; tiap entri tetap membawa tingkat risikonya, jadi folder sistem, home, atau kredensial ditandai — atau dikunci — sebelum bisa dipilih
 
 **Keamanan** — lihat [Keamanan](#-keamanan)
 - **Tingkat risiko** — tiap hasil *aman*, *hati-hati*, *berbahaya*, atau *dilindungi*, lengkap dengan alasannya; hasil berisiko tidak pernah tercentang otomatis dan butuh centang "Saya mengerti"
@@ -341,16 +342,23 @@ Alur uninstall: `ListPackages` (provider berjalan bersamaan) → pilih satu →
 setujui → `StartUninstall` dengan ID langkah → `uninstall:progress` /
 `uninstall:finished`.
 
+Alur pindai drive: pilih drive → `StartAnalyze` (satu folder tiap kali, ukuran dari
+satu kumpulan walker bersama) → `analyze:progress` / `analyze:finished` → diagram
+menampilkan cincin dari akar drive sampai folder yang sedang dilihat → telusuri,
+buka di Finder, atau centang item terbesar → modal konfirmasi dan jalur
+`StartDelete` yang sama seperti pembersih.
+
 `internal/` berisi `safety` (tingkat risiko, penjaga hapus keras, pemeriksaan
 konteks), `rules` (definisi kategori + matcher + petunjuk risiko + penanda proyek),
 `drive` (deteksi drive per platform), `scanner` (engine dua fase concurrent +
 penilaian risiko), `deleter` (hapus massal + guard + keep-root + batal),
 `uninstall` (provider paket/aplikasi/toolchain, rencana, eksekusi, pembersihan
 profil/PATH/registry), `browser` (daftar isi folder beserta ukuran rekursif),
+`analyzer` (daftar pemakaian drive: ukuran rekursif + tingkat risiko),
 `reveal` (handoff ke OS), `updater` (cek rilis, unduh, verifikasi sha256),
 `appicon` (ikon Dock runtime), dan `sysinfo`. `frontend/src/` tersusun atas
 `App.tsx`, `backend.ts`, panel per fitur (`categories/`, `drives/`, `scan/`,
-`results/`, `uninstall/`, `update/`), `common/` (termasuk `RiskBadge`/`RiskAck`), `hooks/`, `i18n/`, `lib/`, dan `styles/`.
+`results/`, `analyze/`, `uninstall/`, `update/`), `common/` (termasuk `RiskBadge`/`RiskAck`), `hooks/`, `i18n/`, `lib/`, dan `styles/`.
 
 ## 🔒 Keamanan
 
@@ -397,6 +405,7 @@ Tetap berlaku sejak awal:
 - Nama folder generik (`build`, `target`, `bin`, `coverage`) wajib lolos filter konten
 - Mode permanen disertai modal peringatan merah + konfirmasi ganda
 - Kategori yang perlu unduh ulang besar atau tidak bisa dipulihkan bersifat opt-in
+- Peta pemakaian drive bersifat baca-saja: ia hanya mengukur dan menilai, dan setiap penghapusan yang ditawarkan melewati penjagaan `StartDelete` yang sama
 
 **Keamanan uninstaller** memakai penjaga yang sama ditambah aturannya sendiri: hanya
 menjalankan langkah dari rencana yang ia simpan sendiri (UI mengirim ID langkah,

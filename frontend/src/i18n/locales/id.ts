@@ -17,6 +17,7 @@ const id = {
     yes: "Ya",
     no: "Tidak",
     none: "Tidak ada",
+    backToTop: "Kembali ke atas",
   },
   // Indonesian has no singular/plural inflection, so both forms are the same word.
   plurals: {
@@ -271,7 +272,30 @@ const id = {
   nav: {
     label: "Pilih tugas",
     clean: "Bersihkan",
+    analyze: "Pindai drive",
     uninstall: "Uninstall",
+  },
+  analyze: {
+    title: "Pindai drive",
+    lead: "Lihat apa yang sebenarnya memenuhi sebuah drive — folder dan file terbesarnya, dari yang paling besar. Buka, tampilkan di Finder, atau hapus yang sudah tidak diperlukan; lokasi sensitif ditandai sebelum bisa disentuh.",
+    changeDrive: "Ganti drive",
+    crumbs: "Jalur folder",
+    working: "Mengukur…",
+    scanning: "Mengukur drive…",
+    measureNote: "Membaca setiap subfolder untuk menemukan yang terbesar",
+    failed: "Folder ini tidak bisa dibaca",
+    inFolder: "di folder ini",
+    empty: "Folder ini kosong.",
+    partial: "· berhenti lebih awal",
+    hoverHint: "Arahkan ke segmen untuk melihat isinya",
+    chartLabel: "Diagram penggunaan disk",
+    other: "Item lain",
+    goUp: "Naik satu folder",
+    open: "Buka {name}",
+    select: "Pilih {name}",
+    reading: "{count} folder dibaca",
+    showMore: "Tampilkan {count} lagi",
+    selectHint: "Centang yang sudah tidak diperlukan. Tidak ada yang dihapus sebelum kamu konfirmasi.",
   },
   safety: {
     level: {

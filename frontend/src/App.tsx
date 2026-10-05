@@ -8,7 +8,9 @@ import { ScanProgressView } from "./scan/ScanProgress";
 import { ResultsPanel } from "./results/ResultsPanel";
 import { ConfirmModal, type DeleteMode, type RiskEntry } from "./results/ConfirmModal";
 import { UninstallPage } from "./uninstall/UninstallPage";
+import { AnalyzePage } from "./analyze/AnalyzePage";
 import { ModeNav } from "./common/ModeNav";
+import { Icon } from "./common/Icon";
 import { DeleteProgressView } from "./results/DeleteProgress";
 import { ThemeSwitch } from "./common/ThemeSwitch";
 import { UpdateControl } from "./update/UpdateControl";
@@ -47,7 +49,17 @@ function resized(r: ScanResult, sizes: Map<string, number>): ScanResult {
   return { ...r, ...tally(items) };
 }
 
-type Stage = "select" | "results" | "delete" | "settings" | "uninstall";
+type Stage = "select" | "results" | "delete" | "settings" | "uninstall" | "analyze";
+
+/** A delete waiting for confirmation, from either the cleaner or the analyzer. */
+interface PendingDelete {
+  paths: string[];
+  sizes: number[];
+  risks: RiskEntry[];
+  totalBytes: number;
+  count: number;
+  origin: "results" | "analyze";
+}
 
 export default function App() {
   const settings = useAppliedSettings();
@@ -72,13 +84,19 @@ export default function App() {
   const resultRef = useRef<ScanResult | null>(null);
   resultRef.current = result;
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pending, setPending] = useState<PendingDelete | null>(null);
   const [deleteMode, setDeleteMode] = useState<DeleteMode>("trash");
   const lastMode = useRef<DeleteMode>("trash");
   const lastPaths = useRef<string[]>([]);
+  // Which screen started the running delete, so the flow returns there.
+  const deleteOrigin = useRef<"results" | "analyze">("results");
   // Bumped after a delete so open folders in the results reload their contents.
   const [refreshKey, setRefreshKey] = useState(0);
   const [deleteProgress, setDeleteProgress] = useState<DeleteProgress | null>(null);
+  // The scroll container is <main>; a long page (results, analyzer, uninstall)
+  // shows a "back to top" button once it has scrolled far enough.
+  const contentRef = useRef<HTMLElement>(null);
+  const [showToTop, setShowToTop] = useState(false);
   const [toasts, setToasts] = useState<ToastData[]>([]);
   const toastId = useRef(0);
 
@@ -140,17 +158,23 @@ export default function App() {
     const off3 = api.onDeleteProgress((prog) => setDeleteProgress(prog));
     const off4 = api.onDeleteFinished((r) => {
       setDeleteProgress(null);
-      setConfirmOpen(false);
-      // Stay on the results so the user can pick more; only what is gone leaves the list.
-      setStage("results");
+      setPending(null);
+      const fromAnalyze = deleteOrigin.current === "analyze";
+      // Stay on the screen the delete started from so the user can pick more;
+      // only what is gone leaves the list.
+      setStage(fromAnalyze ? "analyze" : "results");
       const failed = new Set((r.failures ?? []).map((f) => f.path));
       const gone = lastPaths.current.filter((p) => !failed.has(p));
       const isGone = (p: string) => gone.some((g) => p === g || isInside(p, g));
-      setSelectedItems((prev) => new Set([...prev].filter((p) => !isGone(p))));
-      setResult((prev) => (prev ? withoutItems(prev, isGone) : prev));
+      if (!fromAnalyze) {
+        setSelectedItems((prev) => new Set([...prev].filter((p) => !isGone(p))));
+        setResult((prev) => (prev ? withoutItems(prev, isGone) : prev));
+      }
+      // The analyzer re-measures the folder in view when this key changes.
       setRefreshKey((n) => n + 1);
       // What is left may have shrunk (a child was deleted): re-measure it.
-      const left = (resultRef.current?.items ?? []).filter((i) => !isGone(i.path)).map((i) => i.path);
+      let left: string[] = [];
+      if (!fromAnalyze) left = (resultRef.current?.items ?? []).filter((i) => !isGone(i.path)).map((i) => i.path);
       if (left.length > 0) {
         api.measurePaths(left).then((sizes) => {
           const fresh = new Map(left.map((p, i) => [p, sizes[i]]));
@@ -235,14 +259,36 @@ export default function App() {
     return out;
   }, [result, selectedItems, t]);
 
-  const confirmDelete = (mode: DeleteMode, acknowledged: boolean) => {
+  // Open the shared confirmation for the cleaner's selection.
+  const openCleanConfirm = () => {
     const paths = [...selectedItems];
+    setPending({
+      paths,
+      sizes: paths.map((x) => knownSizes.get(x) ?? 0),
+      risks,
+      totalBytes: selectedBytes,
+      count: paths.length,
+      origin: "results",
+    });
+  };
+
+  // Open the same confirmation for a selection made in the drive analyzer.
+  const openAnalyzeConfirm = (paths: string[], sizes: number[], analyzeRisks: RiskEntry[], totalBytes: number) => {
+    setPending({ paths, sizes, risks: analyzeRisks, totalBytes, count: paths.length, origin: "analyze" });
+  };
+
+  const confirmDelete = (mode: DeleteMode, acknowledged: boolean) => {
+    if (!pending) return;
+    const { paths, sizes, origin } = pending;
     lastMode.current = mode;
     lastPaths.current = paths;
-    setConfirmOpen(false);
-    setStage("delete");
+    deleteOrigin.current = origin;
+    setPending(null);
+    // The cleaner hides its results behind the progress screen; the analyzer keeps
+    // its chart visible while the shared progress overlay runs on top.
+    if (origin === "results") setStage("delete");
     setDeleteProgress({ done: 0, total: paths.length, bytes: 0, path: "" });
-    api.startDelete({ paths, sizes: paths.map((x) => knownSizes.get(x) ?? 0), mode, acknowledged });
+    api.startDelete({ paths, sizes, mode, acknowledged });
   };
 
   const canScan = selectedDrives.size > 0 && selectedCategories.size > 0 && stage === "select";
@@ -268,8 +314,12 @@ export default function App() {
           </div>
         </div>
         <ModeNav
-          mode={stage === "uninstall" ? "uninstall" : "clean"}
-          onMode={(m) => (m === "uninstall" ? setStage("uninstall") : goClean())}
+          mode={stage === "uninstall" ? "uninstall" : stage === "analyze" ? "analyze" : "clean"}
+          onMode={(m) => {
+            if (m === "uninstall") setStage("uninstall");
+            else if (m === "analyze") setStage("analyze");
+            else goClean();
+          }}
         />
         <div className="header-actions">
           <ThemeSwitch />
@@ -278,7 +328,11 @@ export default function App() {
         </div>
       </header>
 
-      <main className="content">
+      <main
+        className="content"
+        ref={contentRef}
+        onScroll={(e) => setShowToTop(e.currentTarget.scrollTop > 320)}
+      >
         {loading ? (
           <div className="skeleton-wrap">
             <div className="skeleton skeleton-card" />
@@ -325,6 +379,16 @@ export default function App() {
           </section>
         )}
 
+        {stage === "analyze" && (
+          <AnalyzePage
+            drives={drives}
+            refreshKey={refreshKey}
+            onNotify={notify}
+            onReveal={revealPath}
+            onDelete={openAnalyzeConfirm}
+          />
+        )}
+
         {stage === "results" && result && (
           <section className="fade-in">
             <h2 className="section-title">{t("results.title")}</h2>
@@ -349,7 +413,7 @@ export default function App() {
                 <button
                   className="btn btn-primary btn-large"
                   disabled={selectedCount === 0}
-                  onClick={() => setConfirmOpen(true)}
+                  onClick={openCleanConfirm}
                 >
                   {t("results.deleteSelected")}
                 </button>
@@ -361,23 +425,34 @@ export default function App() {
 
       {scanProgress && <ScanProgressView progress={scanProgress} onCancel={cancelScan} />}
 
-      {confirmOpen && result && (
+      {pending && (
         <ConfirmModal
-          itemCount={selectedItems.size}
-          totalBytes={selectedBytes}
+          itemCount={pending.count}
+          totalBytes={pending.totalBytes}
           mode={deleteMode}
           onMode={setDeleteMode}
           onConfirm={confirmDelete}
-          onCancel={() => setConfirmOpen(false)}
+          onCancel={() => setPending(null)}
           busy={false}
-          risks={risks}
+          risks={pending.risks}
         />
       )}
-      {stage === "delete" && deleteProgress && <DeleteProgressView progress={deleteProgress} onCancel={() => api.cancelDelete()} />}
+      {deleteProgress && <DeleteProgressView progress={deleteProgress} onCancel={() => api.cancelDelete()} />}
 
       <div className="toast-container">
         {toasts.map((x) => <Toast key={x.id} toast={x} onClose={closeToast} />)}
       </div>
+
+      {showToTop && (
+        <button
+          className="to-top"
+          title={t("common.backToTop")}
+          aria-label={t("common.backToTop")}
+          onClick={() => contentRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+        >
+          <Icon name="chevron-up" size={18} />
+        </button>
+      )}
     </div>
   );
 }

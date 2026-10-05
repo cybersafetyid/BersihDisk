@@ -14,6 +14,8 @@ export function AppIconSupported():Promise<boolean>;
 
 export function AppInfo():Promise<Record<string, any>>;
 
+export function CancelAnalyze():Promise<void>;
+
 export function CancelDelete():Promise<void>;
 
 export function CancelScan():Promise<void>;
@@ -45,6 +47,8 @@ export function PlanUninstall(arg1:string):Promise<uninstall.Plan>;
 export function Reveal(arg1:string):Promise<void>;
 
 export function SetAppIcon(arg1:string):Promise<void>;
+
+export function StartAnalyze(arg1:string):Promise<string>;
 
 export function StartDelete(arg1:main.DeleteRequest):Promise<string>;
 

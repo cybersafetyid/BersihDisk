@@ -1,3 +1,76 @@
+export namespace analyzer {
+	
+	export class Entry {
+	    name: string;
+	    path: string;
+	    isDir: boolean;
+	    isLink: boolean;
+	    size: number;
+	    level: string;
+	    reasons?: string[];
+	    skipped?: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Entry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.isDir = source["isDir"];
+	        this.isLink = source["isLink"];
+	        this.size = source["size"];
+	        this.level = source["level"];
+	        this.reasons = source["reasons"];
+	        this.skipped = source["skipped"];
+	    }
+	}
+	export class Result {
+	    path: string;
+	    totalBytes: number;
+	    entries: Entry[];
+	    files: number;
+	    dirs: number;
+	    skipped: number;
+	    partial: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Result(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.totalBytes = source["totalBytes"];
+	        this.entries = this.convertValues(source["entries"], Entry);
+	        this.files = source["files"];
+	        this.dirs = source["dirs"];
+	        this.skipped = source["skipped"];
+	        this.partial = source["partial"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+
+}
+
 export namespace browser {
 	
 	export class Entry {

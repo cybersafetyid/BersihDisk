@@ -65,6 +65,40 @@ export interface FolderEntry {
   size: number;
 }
 
+// ---- drive analyzer (disk usage view) ----
+
+/** One child of an analyzed folder, with its recursive size and deletion risk. */
+export interface AnalyzeEntry {
+  name: string;
+  path: string;
+  isDir: boolean;
+  isLink: boolean;
+  size: number;
+  /** Risk of deleting the entry, decided by the backend safety rules. */
+  level: Level;
+  reasons?: string[];
+  /** A virtual/pseudo folder or the OS trash: listed but not measured. */
+  skipped?: boolean;
+}
+
+export interface AnalyzeResult {
+  path: string;
+  totalBytes: number;
+  entries: AnalyzeEntry[];
+  files: number;
+  dirs: number;
+  skipped: number;
+  partial: boolean;
+  /** Set when the folder could not be listed. */
+  error?: string;
+}
+
+export interface AnalyzeProgress {
+  path: string;
+  dirs: number;
+  total: number;
+}
+
 export interface UpdateInfo {
   available: boolean;
   current: string;

@@ -13,6 +13,7 @@ import (
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"bersihdisk/internal/analyzer"
 	"bersihdisk/internal/appicon"
 	"bersihdisk/internal/browser"
 	"bersihdisk/internal/deleter"
@@ -70,6 +71,7 @@ type App struct {
 
 	mu           sync.Mutex
 	scanner      *scanner.Scanner
+	analyzer     *analyzer.Analyzer
 	deleter      *deleter.Deleter
 	updateCancel context.CancelFunc
 	uninstaller  *uninstall.Inventory
@@ -78,10 +80,11 @@ type App struct {
 	// The frontend is not trusted with arbitrary paths: deletion is limited to the
 	// last scan's items (and what lies inside them), and only the file this app
 	// downloaded can be installed.
-	win        winstate.State          // window state loaded at launch, updated on close
-	scanItems  map[string]scanner.Item // last scan result by cleaned path
-	release    updater.Info            // last CheckUpdate result; the download URL and digest come from here
-	updateFile string
+	win          winstate.State          // window state loaded at launch, updated on close
+	scanItems    map[string]scanner.Item // last scan result by cleaned path
+	analyzeItems map[string]scanner.Item // drive-analyzer entries seen this session, by cleaned path
+	release      updater.Info            // last CheckUpdate result; the download URL and digest come from here
+	updateFile   string
 }
 
 // isInside reports whether child is parent itself or lies below it.
@@ -93,18 +96,27 @@ func isInside(child, parent string) bool {
 	return rel == "." || (rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)))
 }
 
-// itemFor returns the scan-result item that path is, or lies inside (the
-// innermost one), and whether there is one.
+// itemFor returns the known item that path is, or lies inside (the innermost
+// one), and whether there is one. Both the cleaner's scan result and the drive
+// analyzer's listings count: the analyzer's entries are what lets a folder seen
+// in the disk-usage view be deleted through the same guarded path as a scan item.
 func (a *App) itemFor(path string) (scanner.Item, bool) {
 	path = filepath.Clean(path)
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	var best scanner.Item
 	found := false
-	for root, it := range a.scanItems {
+	consider := func(root string, it scanner.Item) {
 		if isInside(path, root) && (!found || len(root) > len(best.Path)) {
 			best, found = it, true
 		}
+	}
+	for root, it := range a.scanItems {
+		consider(root, it)
+	}
+	// The analyzer map is keyed by the path itself, so the key is the item's path.
+	for root, it := range a.analyzeItems {
+		consider(root, it)
 	}
 	return best, found
 }
@@ -256,6 +268,71 @@ func (a *App) CancelScan() {
 	a.mu.Unlock()
 	if s != nil {
 		s.Cancel()
+	}
+}
+
+// AnalyzeOutcome is sent on "analyze:finished": the listing, or why it failed.
+type AnalyzeOutcome struct {
+	analyzer.Result
+	Error string `json:"error,omitempty"`
+}
+
+// StartAnalyze lists one folder's children with their sizes and risk grades, for
+// the drive-usage view. Progress arrives on "analyze:progress" and the result on
+// "analyze:finished". It replaces any listing still running.
+//
+// Entries are remembered for the session, so a folder shown here can be deleted
+// through StartDelete — which still re-checks the risk before anything is removed.
+func (a *App) StartAnalyze(path string) string {
+	a.mu.Lock()
+	if a.analyzer != nil {
+		a.analyzer.Cancel()
+	}
+	an := analyzer.New(func(p analyzer.Progress) {
+		wailsruntime.EventsEmit(a.ctx, "analyze:progress", p)
+	})
+	a.analyzer = an
+	a.mu.Unlock()
+
+	go func() {
+		res, err := an.List(path)
+		a.mu.Lock()
+		current := a.analyzer == an
+		if current {
+			a.analyzer = nil
+			if a.analyzeItems == nil {
+				a.analyzeItems = make(map[string]scanner.Item)
+			}
+			for _, e := range res.Entries {
+				a.analyzeItems[filepath.Clean(e.Path)] = scanner.Item{
+					Path:    e.Path,
+					Size:    e.Size,
+					Level:   e.Level,
+					Reasons: e.Reasons,
+				}
+			}
+		}
+		a.mu.Unlock()
+		// A listing replaced by a newer one is stale; its result must not reach the UI.
+		if !current {
+			return
+		}
+		out := AnalyzeOutcome{Result: res}
+		if err != nil {
+			out.Error = err.Error()
+		}
+		wailsruntime.EventsEmit(a.ctx, "analyze:finished", out)
+	}()
+	return "ok"
+}
+
+// CancelAnalyze aborts the running folder analysis.
+func (a *App) CancelAnalyze() {
+	a.mu.Lock()
+	an := a.analyzer
+	a.mu.Unlock()
+	if an != nil {
+		an.Cancel()
 	}
 }
 

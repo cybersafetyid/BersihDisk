@@ -76,13 +76,14 @@ internal/
   deleter/              bulk delete via trash or permanent removal (guarded)
   uninstall/            providers, toolchain catalog, plans, execution
   browser/              folder listing with per-child sizes
+  analyzer/             drive-usage listing (recursive sizes + risk grades)
   reveal/               OS handoff (Finder / Explorer, launching installers)
   updater/              GitHub Releases check + download + sha256 verify
   appicon/ sysinfo/     runtime dock icon, system info
 frontend/src/
   App.tsx               main flow
   backend.ts            Wails binding + event wrapper
-  categories/ drives/ scan/ results/ uninstall/ update/ common/
+  categories/ drives/ scan/ results/ analyze/ uninstall/ update/ common/
   hooks/                useTheme, useAppliedSettings
   i18n/locales/         id.ts and en.ts translation catalogs
   lib/                  types, formatting, icon curation, settings

@@ -47,6 +47,25 @@
 }
 .section-title:first-child { margin-top: 0; }
 
+/* Back-to-top: floats above the fixed action bar on long pages. */
+.to-top {
+  position: fixed;
+  right: 26px;
+  bottom: 104px;
+  width: 42px; height: 42px;
+  display: grid; place-items: center;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  z-index: 40;
+  box-shadow: var(--shadow);
+  transition: all var(--duration) var(--ease);
+  animation: pop 0.22s var(--ease);
+}
+.to-top:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+
 /* ---------- Theme switch ---------- */
 .theme-switch {
   display: flex;

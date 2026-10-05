@@ -13,6 +13,7 @@
   border: none; border-radius: 9px;
   background: transparent; color: var(--text-muted);
   font-size: 13px; font-weight: 700; cursor: pointer;
+  white-space: nowrap;
   transition: all var(--duration) var(--ease);
 }
 .mode-nav button:hover { color: var(--text); background: var(--surface-2); }

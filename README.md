@@ -63,6 +63,7 @@ animated. No accounts, no server, no upload.
 - **Two-phase engine** — a *find* phase walking the tree with a system-folder skip-list, then a *measure* phase sizing candidates concurrently, with live progress and cancellation
 - **Content-aware matching** — generic `build/`, `target/`, `bin/`, `obj/` folders only count as artifacts when their contents prove it, so source trees are never matched
 - **Folder browser** — open any scan result to see its children (sizes computed in parallel, lazily) and pick individual entries; children inside a selected folder are not double-counted
+- **Drive usage map** — a *Scan drive* mode sizes a whole drive's children, largest first, and draws them as a DaisyDisk-style sunburst you can hover and drill into; every entry keeps its risk grade, so a system, home or credentials folder is flagged — or blocked — before it can be selected
 
 **Safety** — see [Safety](#-safety)
 - **Risk grading** — every result is *safe*, *caution*, *danger* or *protected*, with the reason in plain words; risky results are never ticked automatically and need an "I understand" acknowledgement
@@ -383,6 +384,7 @@ use"). Assets uploaded to a release always get a digest from GitHub.
     ├── uninstall/          providers (package managers, apps, toolchain catalog),
     │                       plans, execution, profile/PATH/registry cleanup
     ├── browser/            folder listing with recursive sizes
+    ├── analyzer/           drive-usage listing: recursive sizes + safety grades
     ├── reveal/             OS handoff: Open (Finder/Explorer), Launch (installer)
     ├── updater/            GitHub Releases check, download with progress, sha256
     ├── appicon/            runtime dock/taskbar icon swap (macOS)
@@ -393,7 +395,7 @@ use"). Assets uploaded to a release always get a digest from GitHub.
 frontend/src/
 ├── main.tsx / App.tsx      entry + main flow
 ├── backend.ts              Wails binding wrapper + event listeners
-├── categories/ drives/ scan/ results/ uninstall/ update/   feature panels
+├── categories/ drives/ scan/ results/ analyze/ uninstall/ update/   feature panels
 ├── common/                 Icon (SVG engine), Toast, ThemeSwitch, ModeNav,
 │                           RiskBadge / RiskAck (shared warning components)
 ├── hooks/                  useTheme, useAppliedSettings
@@ -406,6 +408,12 @@ frontend/src/
 `scan:progress` / `scan:finished` events → results grouped by category → select
 items → confirmation modal (trash or permanent) → `StartDelete` →
 `delete:progress` / `delete:finished` → summary toast.
+
+**Analyzer flow:** pick a drive → `StartAnalyze` (one folder at a time, sizes from
+one shared pool of walkers) → `analyze:progress` / `analyze:finished` → the
+sunburst shows the rings from the drive root down to the folder in view → drill in,
+reveal, or tick the biggest items → the same confirmation modal and `StartDelete`
+path as the cleaner.
 
 **Uninstall flow:** `ListPackages` (providers run concurrently) → pick one →
 `PlanUninstall` (steps, sizes, warnings; stored server-side) → review and
@@ -458,7 +466,8 @@ Still true from the start:
 - Symlinks are never followed — the walk does not cross mounts or link targets.
 - Generic directory names (`build`, `target`, `bin`, `coverage`) require a content filter.
 - Permanent mode always shows a red warning modal with a second confirmation.
-- Categories that cost a large re-download or are unrecoverable are opt-in.
+- Categories that cost a large re-download or are unrecoverable are opt-in
+- The drive analyzer is read-only: it only measures and grades, and every delete it offers goes through the same `StartDelete` vetting and hard guard.
 
 **Uninstaller safety** follows the same guard plus its own rules: it runs only
 steps of a plan it stored itself (the UI sends step IDs, never commands or paths),

@@ -159,3 +159,36 @@ func TestPermissionHint(t *testing.T) {
 		t.Error("the hint is macOS-only and needs an error")
 	}
 }
+
+// A batch grade must decide exactly like a single Assess: the drive analyzer
+// lists thousands of children and relies on this sharing one guard build.
+func TestAssessBatchMatchesAssess(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+
+	project := filepath.Join(home, "code", "app")
+	paths := []string{
+		string(filepath.Separator),
+		home,
+		filepath.Join(home, ".ssh"),
+		filepath.Join(home, "Documents"),
+		project,
+	}
+	batch := AssessBatch(paths)
+	if len(batch) != len(paths) {
+		t.Fatalf("batch = %d results, want %d", len(batch), len(paths))
+	}
+	for i, p := range paths {
+		want := Assess(p, "")
+		if batch[i].Level != want.Level {
+			t.Errorf("AssessBatch(%q).Level = %q, want %q", p, batch[i].Level, want.Level)
+		}
+	}
+	if batch[0].Level != Blocked || batch[1].Level != Blocked || batch[2].Level != Blocked {
+		t.Error("roots, the home folder and credentials must stay blocked")
+	}
+	if batch[4].Level != Safe {
+		t.Errorf("a project folder = %q, want safe", batch[4].Level)
+	}
+}

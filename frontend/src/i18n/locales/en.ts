@@ -17,6 +17,7 @@ const en = {
     yes: "Yes",
     no: "No",
     none: "None",
+    backToTop: "Back to top",
   },
   plurals: {
     folderOne: "folder",
@@ -270,7 +271,30 @@ const en = {
   nav: {
     label: "Choose a task",
     clean: "Clean",
+    analyze: "Scan drive",
     uninstall: "Uninstall",
+  },
+  analyze: {
+    title: "Scan a drive",
+    lead: "See what actually fills a drive — its biggest folders and files, largest first. Open them, reveal them, or delete what you no longer need; sensitive locations are flagged before you can touch them.",
+    changeDrive: "Change drive",
+    crumbs: "Folder path",
+    working: "Measuring…",
+    scanning: "Measuring a drive…",
+    measureNote: "Reading every subfolder to find the biggest items",
+    failed: "Could not read this folder",
+    inFolder: "in this folder",
+    empty: "This folder is empty.",
+    partial: "· stopped early",
+    hoverHint: "Hover a segment to see what it is",
+    chartLabel: "Disk usage chart",
+    other: "Other items",
+    goUp: "Go up one folder",
+    open: "Open {name}",
+    select: "Select {name}",
+    reading: "{count} folders read",
+    showMore: "Show {count} more",
+    selectHint: "Tick what no longer needs to stay. Nothing is deleted until you confirm.",
   },
   safety: {
     level: {
