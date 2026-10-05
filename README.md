@@ -33,8 +33,62 @@ Frees the gigabytes your toolchain leaves behind: `node_modules`, build artifact
 
 **English** · **[Bahasa Indonesia](README.id.md)**
 
-[Download](https://github.com/cybersafetyid/BersihDisk/releases) · [Features](#-features) · [Getting started](#-getting-started) · [Architecture](#-architecture) · [Contributing](CONTRIBUTING.md) · [Changelog](#-changelog--releases) · [Sponsor](#-sponsorship--donations)
+[Download](https://github.com/cybersafetyid/BersihDisk/releases) · [Screenshots](#-screenshots) · [Features](#-features) · [Getting started](#-getting-started) · [Architecture](#-architecture) · [Contributing](CONTRIBUTING.md) · [Changelog](#-changelog--releases) · [Sponsor](#-sponsorship--donations)
+
+<br />
+
+<p align="center">
+  <img src="assets/screenshots/00-hero-window.png" alt="BersihDisk Hero Preview — Developer Disk Cleaner & Uninstaller" width="850" />
+</p>
 </div>
+
+---
+
+## 📸 Screenshots
+
+See how BersihDisk keeps developer machines fast, clean, and organized:
+
+### 1. Developer Toolchain Scanner
+Select mounted drives and scan 24 targeted developer categories (`node_modules`, Go module cache, Cargo build caches, Gradle, Xcode DerivedData, Docker buildx, AI/ML models, and more).
+
+<p align="center">
+  <img src="assets/screenshots/01-cleaner-dashboard.png" alt="BersihDisk Dashboard — Multi-drive and Category Selection" width="820" />
+</p>
+
+### 2. High-Performance Two-Phase Scan Engine
+Watch the real-time scanner walk millions of directories safely using concurrent goroutines with system folder skip-lists and live candidate counters.
+
+<p align="center">
+  <img src="assets/screenshots/06-scan-progress.png" alt="Two-phase concurrent scan engine with live progress" width="820" />
+</p>
+
+### 3. Detailed Results & Risk Grading
+Free tens of gigabytes with confidence. Results are graded (*Safe*, *Caution*, *Danger*, *Protected*) so system files or production assets are never deleted accidentally. Drill down into individual subfolders with lazy parallel sizing.
+
+| Results & Risk Grading | Folder Drilldown Browser |
+|:---:|:---:|
+| <img src="assets/screenshots/02-scan-results.png" alt="Scan Results with Risk Grading" width="400" /> | <img src="assets/screenshots/02-scan-results-expanded.png" alt="Folder Browser with Parallel Sizing" width="400" /> |
+
+### 4. Interactive DaisyDisk-Style Drive Usage Map
+Switch to **Pindai drive** to inspect an interactive sunburst chart showing disk space usage by folder. Drill in, inspect largest folders, and check safety levels before taking action.
+
+<p align="center">
+  <img src="assets/screenshots/02-drive-analyzer-sunburst.png" alt="DaisyDisk-style interactive sunburst disk usage map" width="820" />
+</p>
+
+### 5. Developer Toolchain & App Uninstaller
+Complete uninstallation for applications, runtimes (uv, Rust, Go, Bun, Deno, pnpm), and packages. Review exact removal plans including binaries, cache folders, configs, and shell profile paths before executing.
+
+| Installed Toolchains & Apps | Complete Step-by-Step Uninstall Plan |
+|:---:|:---:|
+| <img src="assets/screenshots/03-uninstaller-list.png" alt="Uninstaller list of tools and apps" width="400" /> | <img src="assets/screenshots/04-uninstall-plan.png" alt="Step-by-step uninstall plan review" width="400" /> |
+
+### 6. Safe Deletion & Personalization
+Choose between moving files to the **Trash** (default & restorable) or **Permanent Deletion** (with red double-confirm guard). Customize your workspace with Dark/Light themes, custom accent colors, and runtime app icons.
+
+| Safe Delete Confirmation | Personalization & Themes |
+|:---:|:---:|
+| <img src="assets/screenshots/02-delete-modal.png" alt="Safe Delete Modal with Trash vs Permanent options" width="400" /> | <img src="assets/screenshots/05-settings-customization.png" alt="Settings, themes, accent colors, and dock icons" width="400" /> |
 
 ---
 

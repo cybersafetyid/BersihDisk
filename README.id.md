@@ -33,10 +33,64 @@ Membersihkan gigabyte yang ditinggalkan toolchain-mu: `node_modules`, build arti
 
 **[English](README.md)** · **Bahasa Indonesia**
 
-[Unduh](https://github.com/cybersafetyid/BersihDisk/releases) · [Fitur](#-fitur) · [Mulai](#-mulai-menggunakan) · [Kategori](#-kategori-pembersihan) · [Kontribusi](CONTRIBUTING.md) · [Changelog](#-changelog--rilis) · [Donasi](#-sponsor-donasi)
+[Unduh](https://github.com/cybersafetyid/BersihDisk/releases) · [Cuplikan Layar](#-cuplikan-layar) · [Fitur](#-fitur) · [Mulai](#-mulai-menggunakan) · [Kategori](#-kategori-pembersihan) · [Kontribusi](CONTRIBUTING.md) · [Changelog](#-changelog--rilis) · [Donasi](#-sponsor-donasi)
+
+<br />
+
+<p align="center">
+  <img src="assets/screenshots/00-hero-window.png" alt="Tampilan Utama BersihDisk — Pembersih Disk & Uninstaller untuk Developer" width="850" />
+</p>
 
 > Dokumentasi ini tersedia dalam dua bahasa: **[English](README.md)** dan **Bahasa Indonesia** (berkas ini).
 </div>
+
+---
+
+## 📸 Cuplikan Layar
+
+Lihat bagaimana BersihDisk menjaga ruang penyimpanan perangkat developer tetap lega, bersih, dan optimal:
+
+### 1. Pemindai Toolchain & Kategori Developer
+Pilih drive yang terpasang dan pindai 24 kategori sampah developer (`node_modules`, Go module cache, Cargo build cache, Gradle, Xcode DerivedData, Docker buildx, model AI/ML, dan banyak lagi).
+
+<p align="center">
+  <img src="assets/screenshots/01-cleaner-dashboard.png" alt="Dashboard BersihDisk — Pemilihan Drive dan Kategori" width="820" />
+</p>
+
+### 2. Engine Scan Dua Fase Berperforma Tinggi
+Lihat scanner berjalan secara live memeriksa jutaan folder secara concurrent dan aman, dilengkapi proteksi folder sistem (skip-list) dan penghitung kandidat waktu-nyata.
+
+<p align="center">
+  <img src="assets/screenshots/06-scan-progress.png" alt="Engine scan dua fase dengan indikator progress langsung" width="820" />
+</p>
+
+### 3. Hasil Scan Terperinci & Klasifikasi Risiko
+Bebaskan puluhan gigabyte dengan rasa aman. Setiap hasil dinilai tingkat risikonya (*Aman*, *Hati-hati*, *Berbahaya*, *Terlindungi*) sehingga berkas penting atau aset kerja tidak akan terhapus keliru. Telusuri subfolder secara mendalam dengan penghitungan ukuran paralel.
+
+| Hasil Scan & Tingkat Risiko | Penelusuran Isi Folder (Drilldown) |
+|:---:|:---:|
+| <img src="assets/screenshots/02-scan-results.png" alt="Hasil Scan dengan Tingkat Risiko" width="400" /> | <img src="assets/screenshots/02-scan-results-expanded.png" alt="Browser Folder dengan Pengukuran Paralel" width="400" /> |
+
+### 4. Peta Penggunaan Drive Interaktif Bergaya DaisyDisk
+Gunakan tab **Pindai drive** untuk melihat diagram matahari (sunburst) interaktif dari folder-folder yang memenuhi drive. Arahkan mouse, lakukan drilldown, dan tinjau status keamanannya sebelum mengambil tindakan.
+
+<p align="center">
+  <img src="assets/screenshots/02-drive-analyzer-sunburst.png" alt="Peta penggunaan disk interaktif bergaya DaisyDisk" width="820" />
+</p>
+
+### 5. Uninstaller Tool Developer & Aplikasi Bersih Tuntas
+Pencopotan menyeluruh untuk aplikasi, runtime & SDK (uv, Rust, Go, Bun, Deno, pnpm), dan paket. Tinjau setiap langkah rencana uninstall (binary, cache, konfigurasi, dan jalur shell profile) sebelum dieksekusi.
+
+| Daftar Aplikasi & Toolchain | Tinjauan Rencana Uninstall Langkah demi Langkah |
+|:---:|:---:|
+| <img src="assets/screenshots/03-uninstaller-list.png" alt="Daftar aplikasi dan toolchain di Uninstaller" width="400" /> | <img src="assets/screenshots/04-uninstall-plan.png" alt="Rencana langkah demi langkah pencopotan tool" width="400" /> |
+
+### 6. Mode Penghapusan Aman & Kustomisasi Tampilan
+Pilih penghapusan ke **Tempat Sampah** (bawaan, aman & bisa dipulihkan) atau **Permanen** (dengan modal konfirmasi ganda). Personalisasi pengalamanmu dengan tema Gelap/Terang/Sistem, beragam warna aksen, dan penggantian ikon dock.
+
+| Konfirmasi Hapus Aman | Pengaturan & Kustomisasi Tema |
+|:---:|:---:|
+| <img src="assets/screenshots/02-delete-modal.png" alt="Modal Konfirmasi Penghapusan Aman" width="400" /> | <img src="assets/screenshots/05-settings-customization.png" alt="Pengaturan tampilan, tema, dan aksen warna" width="400" /> |
 
 ---
 
