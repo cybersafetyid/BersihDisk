@@ -10,6 +10,12 @@ each release is tagged `vX.Y.Z`.
 
 [Riwayat versi Bahasa Indonesia →](#catatan-versi-bahasa-indonesia)
 
+## [1.1.1] - 2026-10-05
+
+### Added
+
+- add drive space analyzer page with interactive sunburst chart and deletion support (`4ced20e`)
+
 ## [1.1.0] - 2026-09-28
 
 ### Added

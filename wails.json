@@ -8,7 +8,7 @@
   "frontend:dev:serverUrl": "auto",
   "Info": {
     "productName": "BersihDisk",
-    "productVersion": "1.1.0",
+    "productVersion": "1.1.1",
     "comments": "Pembersih disk untuk developer",
     "companyName": "Gorby Permana",
     "copyright": "Copyright © 2026 Gorby Permana"
