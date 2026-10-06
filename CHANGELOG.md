@@ -10,6 +10,17 @@ each release is tagged `vX.Y.Z`.
 
 [Riwayat versi Bahasa Indonesia →](#catatan-versi-bahasa-indonesia)
 
+## [1.1.2] - 2026-10-06
+
+### Added
+
+- restrict analysis and deletion to detected drive mount points (`d941228`)
+
+### Changed
+
+- add UI screenshots and documentation sections to READMEs (`1f5535a`)
+- remove trailing spaces from comments (`806b116`)
+
 ## [1.1.1] - 2026-10-05
 
 ### Added
