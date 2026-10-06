@@ -49,6 +49,7 @@ Frees the gigabytes your toolchain leaves behind: `node_modules`, build artifact
 See how BersihDisk keeps developer machines fast, clean, and organized:
 
 ### 1. Developer Toolchain Scanner
+
 Select mounted drives and scan 24 targeted developer categories (`node_modules`, Go module cache, Cargo build caches, Gradle, Xcode DerivedData, Docker buildx, AI/ML models, and more).
 
 <p align="center">
@@ -56,6 +57,7 @@ Select mounted drives and scan 24 targeted developer categories (`node_modules`,
 </p>
 
 ### 2. High-Performance Two-Phase Scan Engine
+
 Watch the real-time scanner walk millions of directories safely using concurrent goroutines with system folder skip-lists and live candidate counters.
 
 <p align="center">
@@ -63,13 +65,15 @@ Watch the real-time scanner walk millions of directories safely using concurrent
 </p>
 
 ### 3. Detailed Results & Risk Grading
-Free tens of gigabytes with confidence. Results are graded (*Safe*, *Caution*, *Danger*, *Protected*) so system files or production assets are never deleted accidentally. Drill down into individual subfolders with lazy parallel sizing.
 
-| Results & Risk Grading | Folder Drilldown Browser |
-|:---:|:---:|
+Free tens of gigabytes with confidence. Results are graded (_Safe_, _Caution_, _Danger_, _Protected_) so system files or production assets are never deleted accidentally. Drill down into individual subfolders with lazy parallel sizing.
+
+|                                        Results & Risk Grading                                         |                                              Folder Drilldown Browser                                               |
+| :---------------------------------------------------------------------------------------------------: | :-----------------------------------------------------------------------------------------------------------------: |
 | <img src="assets/screenshots/02-scan-results.png" alt="Scan Results with Risk Grading" width="400" /> | <img src="assets/screenshots/02-scan-results-expanded.png" alt="Folder Browser with Parallel Sizing" width="400" /> |
 
 ### 4. Interactive DaisyDisk-Style Drive Usage Map
+
 Switch to **Pindai drive** to inspect an interactive sunburst chart showing disk space usage by folder. Drill in, inspect largest folders, and check safety levels before taking action.
 
 <p align="center">
@@ -77,17 +81,19 @@ Switch to **Pindai drive** to inspect an interactive sunburst chart showing disk
 </p>
 
 ### 5. Developer Toolchain & App Uninstaller
+
 Complete uninstallation for applications, runtimes (uv, Rust, Go, Bun, Deno, pnpm), and packages. Review exact removal plans including binaries, cache folders, configs, and shell profile paths before executing.
 
-| Installed Toolchains & Apps | Complete Step-by-Step Uninstall Plan |
-|:---:|:---:|
+|                                          Installed Toolchains & Apps                                          |                                    Complete Step-by-Step Uninstall Plan                                     |
+| :-----------------------------------------------------------------------------------------------------------: | :---------------------------------------------------------------------------------------------------------: |
 | <img src="assets/screenshots/03-uninstaller-list.png" alt="Uninstaller list of tools and apps" width="400" /> | <img src="assets/screenshots/04-uninstall-plan.png" alt="Step-by-step uninstall plan review" width="400" /> |
 
 ### 6. Safe Deletion & Personalization
+
 Choose between moving files to the **Trash** (default & restorable) or **Permanent Deletion** (with red double-confirm guard). Customize your workspace with Dark/Light themes, custom accent colors, and runtime app icons.
 
-| Safe Delete Confirmation | Personalization & Themes |
-|:---:|:---:|
+|                                                 Safe Delete Confirmation                                                 |                                                     Personalization & Themes                                                     |
+| :----------------------------------------------------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------: |
 | <img src="assets/screenshots/02-delete-modal.png" alt="Safe Delete Modal with Trash vs Permanent options" width="400" /> | <img src="assets/screenshots/05-settings-customization.png" alt="Settings, themes, accent colors, and dock icons" width="400" /> |
 
 ---
@@ -100,7 +106,7 @@ Cargo module caches, Gradle and Maven repositories, Docker buildx layers,
 HuggingFace weights, Xcode DerivedData — and most of it is regenerable.
 BersihDisk finds those directories across every mounted drive, shows you what is
 inside them, and deletes only what you ticked. Every result is graded for risk,
-so a folder that only *looks* like junk — a global `node_modules`, an app bundle,
+so a folder that only _looks_ like junk — a global `node_modules`, an app bundle,
 the Ruby gems you installed — is flagged (or refused) before it can hurt. The
 second half of the app removes whole tools — Node, Rust, Python, Docker, VS Code
 and friends — together with the caches, configuration, shell-profile lines, PATH
@@ -113,33 +119,39 @@ animated. No accounts, no server, no upload.
 ## ✨ Features
 
 **Detection**
+
 - **Multi-drive scanning** — macOS (`/Volumes`), Windows (A:–Z: via WinAPI), Linux (`/proc/mounts`), each with used/free capacity
-- **Two-phase engine** — a *find* phase walking the tree with a system-folder skip-list, then a *measure* phase sizing candidates concurrently, with live progress and cancellation
+- **Two-phase engine** — a _find_ phase walking the tree with a system-folder skip-list, then a _measure_ phase sizing candidates concurrently, with live progress and cancellation
 - **Content-aware matching** — generic `build/`, `target/`, `bin/`, `obj/` folders only count as artifacts when their contents prove it, so source trees are never matched
 - **Folder browser** — open any scan result to see its children (sizes computed in parallel, lazily) and pick individual entries; children inside a selected folder are not double-counted
-- **Drive usage map** — a *Scan drive* mode sizes a whole drive's children, largest first, and draws them as a DaisyDisk-style sunburst you can hover and drill into; every entry keeps its risk grade, so a system, home or credentials folder is flagged — or blocked — before it can be selected
+- **Drive usage map** — a _Scan drive_ mode sizes a whole drive's children, largest first, and draws them as a DaisyDisk-style sunburst you can hover and drill into; every entry keeps its risk grade, so a system, home or credentials folder is flagged — or blocked — before it can be selected
 
 **Safety** — see [Safety](#-safety)
-- **Risk grading** — every result is *safe*, *caution*, *danger* or *protected*, with the reason in plain words; risky results are never ticked automatically and need an "I understand" acknowledgement
+
+- **Risk grading** — every result is _safe_, _caution_, _danger_ or _protected_, with the reason in plain words; risky results are never ticked automatically and need an "I understand" acknowledgement
 - **Hard guard** — home folder, personal data folders, credentials (`~/.ssh`, `~/.aws`, …) and operating-system trees can never be deleted, enforced again inside the deleter
 - **Context checks** — a `node_modules` inside an app bundle, an editor extension, `nvm`/`pyenv`, or a global `lib/` folder is danger; one without a `package.json` beside it is caution
 
 **Uninstall** — see [Uninstaller](#-uninstaller)
-- **Apps, runtimes and packages** — macOS apps, Windows *Installed apps*, Linux launchers and Flatpaks; Node/Python/Rust/Go/Ruby/Java toolchains; packages of npm, pip, pipx, cargo, Homebrew, RubyGems, Scoop and `go install`
+
+- **Apps, runtimes and packages** — macOS apps, Windows _Installed apps_, Linux launchers and Flatpaks; Node/Python/Rust/Go/Ruby/Java toolchains; packages of npm, pip, pipx, cargo, Homebrew, RubyGems, Scoop and `go install`
 - **Clean, not just removed** — the tool's own uninstall command first, then caches, config, shell-profile lines, Windows PATH entries and registry keys — every step reviewable and individually tickable
 
 **Cleanup**
-- **24 categories** with official brand icons — see [Cleanup categories](#-cleanup-categories)
+
+- **29 categories** with official brand icons — see [Cleanup categories](#-cleanup-categories)
 - **Bulk delete** — multi-select, "select all" / "select ≥ 100 MB" shortcuts, confirmation before anything is removed
 - **Two delete modes** — **Trash** (default, restorable, cross-platform via [go-trash](https://github.com/laurent22/go-trash)) or **Permanent** (`os.RemoveAll`, guarded by a red double-confirm modal)
 - **Reveal in Finder / Explorer** — from every result row and every folder child
 
 **Interface**
+
 - **Bilingual UI** — English and Bahasa Indonesia, switchable at runtime and persisted
 - **Dark / Light / System** themes on neutral matte black, plus a custom accent colour and a runtime app-icon picker
 - Motion throughout (stagger fade-in, pop, shimmer, indeterminate progress), skeleton loading, toasts, modal confirmations
 
 **Maintenance**
+
 - **In-app updates** — checks GitHub Releases, shows the changelog, downloads with progress and speed, verifies SHA-256 when GitHub publishes a digest, then hands the file to the OS installer (`.dmg`/`.pkg`/`.zip`, `.exe`/`.msi`)
 - **Settings panel** — language, theme, accent, icon, automatic updates, cache clear, feedback email, privacy policy and terms
 - **System & app info** — OS, architecture, cores, memory, app size and data folder, in-app
@@ -152,43 +164,48 @@ re-download or is unrecoverable. **Risk** is the worst grade any location of the
 category can reach (see [Safety](#-safety)); an empty cell means every location
 is safe.
 
-| # | Category | Targets | Default | Risk |
-|---|---|---|---|---|
-| 1 | Node.js | `node_modules` | Default |  |
-| 2 | Go | `~/go/pkg/mod`, download cache, build cache | Default |  |
-| 3 | Rust | `target/` (content-filtered), `~/.cargo/registry` | Default |  |
-| 4 | Gradle | `build/` artifacts (filtered), `~/.gradle/caches` | Default |  |
-| 5 | Maven | `~/.m2/repository`, `target/` (filtered) | Default | caution — `~/.m2/repository` may hold locally installed artifacts |
-| 6 | C / C++ | `CMakeFiles`, `cmake-build-*` | Default |  |
-| 7 | Python | `__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, virtualenvs | Default | caution — virtualenvs |
-| 8 | .NET | `bin/`, `obj/` (Debug/Release/.dll filter) | Default |  |
-| 9 | Frontend build cache | `.next`, `.nuxt`, `.turbo`, `.vite`, `.parcel-cache`, `.svelte-kit`, `.astro`, `coverage`, `storybook-static` | Default |  |
-| 10 | Xcode & iOS | DerivedData, iOS DeviceSupport, CoreSimulator caches, SwiftPM `.build` | Default |  |
-| 11 | Android | `app/build` (multi-segment pattern), `.cxx`, build-cache | Default |  |
-| 12 | Docker & Buildx | `~/.docker/buildx`, Docker Desktop cache and logs (never the Windows WSL disk image) | Default | caution — buildx builder definitions |
-| 13 | Homebrew | `Library/Caches/Homebrew`, `~/.cache/homebrew` | Default |  |
-| 14 | PHP & Composer | `~/.composer/cache`, `~/.cache/composer` | Default |  |
-| 15 | Python package cache | pip / uv / Poetry wheel caches, `~/.conda/pkgs` | Default |  |
-| 16 | Flutter & Pub | `~/.pub-cache/hosted`, engine cache, `.dart_tool` | Default | caution — globally activated tools |
-| 17 | Terraform | `.terraform/`, plugin cache | Default |  |
-| 18 | .NET NuGet | `~/.nuget/packages`, HTTP cache | Default |  |
-| 19 | JetBrains | IDE index caches (never the Toolbox folder that holds installed IDEs) | Default |  |
-| 20 | Electron & browser cache | electron, npm `_cacache`/`_npx`, yarn, pnpm, Playwright, Cypress | **opt-in** | caution |
-| 21 | Temp & system cache | `~/.cache`, `%TEMP%`, CrashDumps | **opt-in** | caution — emptied, never removed |
-| 22 | AI / ML cache | HuggingFace, PyTorch, Ollama, Whisper | **opt-in** | caution — very large downloads |
-| 23 | Ruby & Gems | `~/.gem`, Bundler cache | **opt-in** | **danger** — `~/.gem` holds installed gems |
-| 24 | Emulators & simulators | Android AVDs, iOS Simulator data | **opt-in** | **danger** — AVDs and simulators hold app data |
+| #   | Category                 | Targets                                                                                                       | Default    | Risk                                                              |
+| --- | ------------------------ | ------------------------------------------------------------------------------------------------------------- | ---------- | ----------------------------------------------------------------- |
+| 1   | Node.js                  | `node_modules`                                                                                                | Default    |                                                                   |
+| 2   | Go                       | `~/go/pkg/mod`, download cache, build cache                                                                   | Default    |                                                                   |
+| 3   | Rust                     | `target/` (content-filtered), `~/.cargo/registry`                                                             | Default    |                                                                   |
+| 4   | Gradle                   | `build/` artifacts (filtered), `~/.gradle/caches`                                                             | Default    |                                                                   |
+| 5   | Maven                    | `~/.m2/repository`, `target/` (filtered)                                                                      | Default    | caution — `~/.m2/repository` may hold locally installed artifacts |
+| 6   | C / C++                  | `CMakeFiles`, `cmake-build-*`                                                                                 | Default    |                                                                   |
+| 7   | Python                   | `__pycache__`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, virtualenvs                                     | Default    | caution — virtualenvs                                             |
+| 8   | .NET                     | `bin/`, `obj/` (Debug/Release/.dll filter)                                                                    | Default    |                                                                   |
+| 9   | Frontend build cache     | `.next`, `.nuxt`, `.turbo`, `.vite`, `.parcel-cache`, `.svelte-kit`, `.astro`, `coverage`, `storybook-static` | Default    |                                                                   |
+| 10  | Xcode & iOS              | DerivedData, iOS/watchOS DeviceSupport, iOS Device Logs, CoreSimulator caches, SwiftPM `.build`               | Default    |                                                                   |
+| 11  | Android                  | `app/build` (multi-segment pattern), `.cxx`, build-cache                                                      | Default    |                                                                   |
+| 12  | Docker & Buildx          | `~/.docker/buildx`, Docker Desktop cache and logs (never the Windows WSL disk image)                          | Default    | caution — buildx builder definitions                              |
+| 13  | Homebrew                 | `Library/Caches/Homebrew`, `~/.cache/homebrew`                                                                | Default    |                                                                   |
+| 14  | PHP & Composer           | `~/.composer/cache`, `~/.cache/composer`                                                                      | Default    |                                                                   |
+| 15  | Python package cache     | pip / Poetry wheel caches, `~/.conda/pkgs`                                                                    | Default    |                                                                   |
+| 16  | Flutter & Pub            | `~/.pub-cache/hosted`, engine cache, `.dart_tool`                                                             | Default    | caution — globally activated tools                                |
+| 17  | Terraform                | `.terraform/`, plugin cache                                                                                   | Default    |                                                                   |
+| 18  | .NET NuGet               | `~/.nuget/packages`, HTTP cache                                                                               | Default    |                                                                   |
+| 19  | JetBrains                | IDE index caches (never the Toolbox folder that holds installed IDEs)                                         | Default    |                                                                   |
+| 20  | Electron & test browsers | Electron binaries, Playwright, Cypress, Puppeteer                                                             | **opt-in** | caution                                                           |
+| 21  | Temp & system cache      | `~/.cache`, `%TEMP%`, CrashDumps                                                                              | **opt-in** | caution — emptied, never removed                                  |
+| 22  | AI / ML cache            | HuggingFace, PyTorch, Ollama, Whisper                                                                         | **opt-in** | caution — very large downloads                                    |
+| 23  | Ruby & Gems              | `~/.gem`, Bundler cache                                                                                       | **opt-in** | **danger** — `~/.gem` holds installed gems                        |
+| 24  | Emulators & simulators   | Android AVDs, iOS Simulator data                                                                              | **opt-in** | **danger** — AVDs and simulators hold app data                    |
+| 25  | Node package managers    | npm `_cacache`/`_npx`, pnpm/yarn/bun stores, node-gyp headers                                                 | Default    |                                                                   |
+| 26  | Deno cache               | `~/.cache/deno`, `~/Library/Caches/deno`, `%LOCALAPPDATA%\deno`                                               | Default    |                                                                   |
+| 27  | uv cache                 | uv download & build cache (separated from pip)                                                                | Default    |                                                                   |
+| 28  | Bazel cache              | `~/.cache/bazel`, bazelisk downloads                                                                          | Default    |                                                                   |
+| 29  | Compiler cache           | ccache and sccache directories                                                                                | Default    |                                                                   |
 
 ## 🗑 Uninstaller
 
 Switch to **Uninstall** in the header. BersihDisk lists what is installed, and
 picking an entry opens its **plan** — nothing runs from the list itself.
 
-| Group | Found through | Removed with |
-|---|---|---|
-| Applications | macOS `/Applications` + `~/Applications` (bundle ID from `Info.plist`); Windows *Installed apps* registry keys; Linux `~/.local/share/applications` launchers; Flatpak; Homebrew casks | macOS: the bundle plus its `~/Library` files; Windows: the vendor's own uninstaller; casks: `brew uninstall --cask --zap`; Flatpak: `--delete-data` |
-| Runtimes & SDKs | a data catalog: rustup, nvm, fnm, Volta, pyenv, conda, SDKMAN!, Bun, Deno, pnpm, Poetry, uv, Go, Gradle, Maven, Flutter/Dart, Composer, .NET, rbenv, RVM | the tool's own command when it has one (`rustup self uninstall`, `conda init --reverse`, `rvm implode`), then its folders |
-| Packages | `npm ls -g`, `pip list`, `pipx list`, `cargo install --list`, `brew leaves`, `gem list`, `scoop export`, `~/go/bin`; Microsoft Store apps (`Get-AppxPackage`); Linux `apt-mark showmanual` + `dpkg-query`, `snap list`, `pacman -Qe`, `dnf repoquery --userinstalled` | `npm uninstall -g`, `pip uninstall`, `cargo uninstall`, `brew uninstall`, `Remove-AppxPackage`, … Linux system packages: `apt purge`, `snap remove --purge`, `pacman -Rns`, `dnf remove` shown for you to run with `sudo` |
+| Group           | Found through                                                                                                                                                                                                                                                         | Removed with                                                                                                                                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Applications    | macOS `/Applications` + `~/Applications` (bundle ID from `Info.plist`); Windows _Installed apps_ registry keys; Linux `~/.local/share/applications` launchers; Flatpak; Homebrew casks                                                                                | macOS: the bundle plus its `~/Library` files; Windows: the vendor's own uninstaller; casks: `brew uninstall --cask --zap`; Flatpak: `--delete-data`                                                                       |
+| Runtimes & SDKs | a data catalog: rustup, nvm, fnm, Volta, pyenv, conda, SDKMAN!, Bun, Deno, pnpm, Poetry, uv, Go, Gradle, Maven, Flutter/Dart, Composer, .NET, rbenv, RVM                                                                                                              | the tool's own command when it has one (`rustup self uninstall`, `conda init --reverse`, `rvm implode`), then its folders                                                                                                 |
+| Packages        | `npm ls -g`, `pip list`, `pipx list`, `cargo install --list`, `brew leaves`, `gem list`, `scoop export`, `~/go/bin`; Microsoft Store apps (`Get-AppxPackage`); Linux `apt-mark showmanual` + `dpkg-query`, `snap list`, `pacman -Qe`, `dnf repoquery --userinstalled` | `npm uninstall -g`, `pip uninstall`, `cargo uninstall`, `brew uninstall`, `Remove-AppxPackage`, … Linux system packages: `apt purge`, `snap remove --purge`, `pacman -Rns`, `dnf remove` shown for you to run with `sudo` |
 
 **What "clean" means.** A plan can contain five kinds of step, all listed before
 you confirm:
@@ -211,18 +228,18 @@ you confirm:
 
 **Administrator rights.** BersihDisk never elevates itself. A step that needs it
 (`/usr/local/go`, `/usr/local/share/dotnet`, machine-wide registry keys) is shown
-with the exact command to copy and run yourself, and is reported as *manual*.
+with the exact command to copy and run yourself, and is reported as _manual_.
 
 **Platform details** — each choice below comes from the vendor's or tool's own
 documentation (see [Research basis](#research-basis)):
 
-| | macOS | Windows | Linux |
-|---|---|---|---|
-| App list | `.app` bundles, bundle ID via `plutil` | Uninstall registry keys in **three** places: `HKLM`, `HKLM\WOW6432Node`, and `HKCU` (per-user installs such as Chrome, Teams, Zoom) — not `Win32_Product`, which triggers MSI reconfiguration | `$XDG_DATA_HOME/applications` launchers, Flatpak, Snap |
-| Uninstall | move the bundle; Docker's own `uninstall` binary is shown (it asks for a password) | `QuietUninstallString` if present, else `UninstallString`; MSI `/I{GUID}` is rewritten to `/X{GUID}`; run through `start /wait` so UAC prompts normally | `flatpak uninstall --delete-data`; `apt purge` (not `remove`, which keeps config), `snap remove --purge` |
-| Leftovers | `~/Library` locations derived from the bundle ID are exact; name guesses start unticked; **Group Containers are only removed when the group ID is the app's own**, because macOS shares them between apps | `%APPDATA%`, `%LOCALAPPDATA%`, `%PROGRAMDATA%` per vendor docs (VS Code, Docker, Android Studio); registry key backed up to `.reg` first | `$XDG_CONFIG_HOME`, `$XDG_DATA_HOME`, `$XDG_CACHE_HOME`, `$XDG_STATE_HOME` — honoured when the user relocated them, defaults from the XDG spec otherwise |
-| PATH | shell profile lines, backed up | user `PATH` written **directly in the registry**, keeping `REG_EXPAND_SZ`, then broadcast `WM_SETTINGCHANGE` — never `setx`, which truncates at 1024 characters | shell profile lines (`.profile`, `.bashrc`, fish config), backed up |
-| Known trap | deleting `~/Library/Containers/*` fails with *Operation not permitted* even with `sudo` until the app has **Full Disk Access** — BersihDisk detects this and says so | Store/MSIX apps are not in the Uninstall registry at all | `dnf`'s "user installed" list can contain everything after a `system-upgrade`; check before removing |
+|            | macOS                                                                                                                                                                                                     | Windows                                                                                                                                                                                       | Linux                                                                                                                                                    |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App list   | `.app` bundles, bundle ID via `plutil`                                                                                                                                                                    | Uninstall registry keys in **three** places: `HKLM`, `HKLM\WOW6432Node`, and `HKCU` (per-user installs such as Chrome, Teams, Zoom) — not `Win32_Product`, which triggers MSI reconfiguration | `$XDG_DATA_HOME/applications` launchers, Flatpak, Snap                                                                                                   |
+| Uninstall  | move the bundle; Docker's own `uninstall` binary is shown (it asks for a password)                                                                                                                        | `QuietUninstallString` if present, else `UninstallString`; MSI `/I{GUID}` is rewritten to `/X{GUID}`; run through `start /wait` so UAC prompts normally                                       | `flatpak uninstall --delete-data`; `apt purge` (not `remove`, which keeps config), `snap remove --purge`                                                 |
+| Leftovers  | `~/Library` locations derived from the bundle ID are exact; name guesses start unticked; **Group Containers are only removed when the group ID is the app's own**, because macOS shares them between apps | `%APPDATA%`, `%LOCALAPPDATA%`, `%PROGRAMDATA%` per vendor docs (VS Code, Docker, Android Studio); registry key backed up to `.reg` first                                                      | `$XDG_CONFIG_HOME`, `$XDG_DATA_HOME`, `$XDG_CACHE_HOME`, `$XDG_STATE_HOME` — honoured when the user relocated them, defaults from the XDG spec otherwise |
+| PATH       | shell profile lines, backed up                                                                                                                                                                            | user `PATH` written **directly in the registry**, keeping `REG_EXPAND_SZ`, then broadcast `WM_SETTINGCHANGE` — never `setx`, which truncates at 1024 characters                               | shell profile lines (`.profile`, `.bashrc`, fish config), backed up                                                                                      |
+| Known trap | deleting `~/Library/Containers/*` fails with _Operation not permitted_ even with `sudo` until the app has **Full Disk Access** — BersihDisk detects this and says so                                      | Store/MSIX apps are not in the Uninstall registry at all                                                                                                                                      | `dnf`'s "user installed" list can contain everything after a `system-upgrade`; check before removing                                                     |
 
 **Platform coverage.** macOS is exercised end to end. The Windows registry and
 Linux launcher code is written against each platform's documented layout and
@@ -261,31 +278,31 @@ for you to run.
 Grab the latest build for your platform from
 [Releases](https://github.com/cybersafetyid/BersihDisk/releases):
 
-| OS | File | Install |
-|---|---|---|
-| macOS (Apple Silicon + Intel) | `BersihDisk-vX.Y.Z-macos-universal.dmg` | open the `.dmg`, drag BersihDisk to *Applications* |
-| Windows 10/11 (x64) | `BersihDisk-vX.Y.Z-windows-x86_64-setup.exe` | run the installer (asks for admin rights) |
-| Windows, no install | `BersihDisk-vX.Y.Z-windows-x86_64-portable.zip` | extract and run `BersihDisk.exe` |
-| Linux (Debian/Ubuntu, x64) | `BersihDisk-vX.Y.Z-linux-x86_64.deb` | `sudo apt install ./BersihDisk-*.deb` |
-| Linux, other distros | `BersihDisk-vX.Y.Z-linux-x86_64.tar.gz` | extract and run `./BersihDisk` |
+| OS                            | File                                            | Install                                            |
+| ----------------------------- | ----------------------------------------------- | -------------------------------------------------- |
+| macOS (Apple Silicon + Intel) | `BersihDisk-vX.Y.Z-macos-universal.dmg`         | open the `.dmg`, drag BersihDisk to _Applications_ |
+| Windows 10/11 (x64)           | `BersihDisk-vX.Y.Z-windows-x86_64-setup.exe`    | run the installer (asks for admin rights)          |
+| Windows, no install           | `BersihDisk-vX.Y.Z-windows-x86_64-portable.zip` | extract and run `BersihDisk.exe`                   |
+| Linux (Debian/Ubuntu, x64)    | `BersihDisk-vX.Y.Z-linux-x86_64.deb`            | `sudo apt install ./BersihDisk-*.deb`              |
+| Linux, other distros          | `BersihDisk-vX.Y.Z-linux-x86_64.tar.gz`         | extract and run `./BersihDisk`                     |
 
 `BersihDisk-vX.Y.Z-SHA256SUMS.txt` lists a checksum for every file.
 
 The builds are **not code-signed or notarised**. On macOS a file downloaded in a
-browser is quarantined: right-click the app → *Open* the first time (files fetched
+browser is quarantined: right-click the app → _Open_ the first time (files fetched
 by the in-app updater are not quarantined). On Windows, SmartScreen may show
-"unknown publisher": *More info* → *Run anyway*. Linux needs GTK 3 and
+"unknown publisher": _More info_ → _Run anyway_. Linux needs GTK 3 and
 WebKit2GTK 4.1 (`libgtk-3-0 libwebkit2gtk-4.1-0`, installed by the `.deb`).
 
 ### Build from source
 
 Prerequisites: **Go 1.23+**, **Node.js 18+**, **Wails CLI v2.12+**, plus per OS:
 
-| OS | Also needed |
-|---|---|
-| macOS | Xcode command line tools (`xcode-select --install`) |
+| OS      | Also needed                                                                                                                                     |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| macOS   | Xcode command line tools (`xcode-select --install`)                                                                                             |
 | Windows | MinGW-w64 gcc (cgo, for the Trash library), [NSIS](https://nsis.sourceforge.io) (`choco install nsis`), Git Bash, `make` (`choco install make`) |
-| Linux | `sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev dpkg-dev` |
+| Linux   | `sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev dpkg-dev`                                                                                  |
 
 ```bash
 git clone https://github.com/cybersafetyid/BersihDisk.git
@@ -297,7 +314,7 @@ make dev             # hot-reload development window
 
 > **Go ≥ 1.24**: the published `wails` CLI bundles an old `golang.org/x/tools`
 > and aborts on Go's new export data (`internal error: package "…" without types
-> was imported`). Build a patched CLI once — `make install-wails-fix` installs it
+was imported`). Build a patched CLI once — `make install-wails-fix` installs it
 > to `~/.local/bin/wails-fixed`, and the Makefile uses it automatically.
 
 ### Package a release build
@@ -311,44 +328,44 @@ make verify     # what CI runs: gofmt, vet, Go tests, frontend typecheck
 `make package` calls `scripts/package.sh`, which builds and packages **the OS it
 runs on** (Wails cannot cross-compile a cgo app):
 
-| Run on | Output in `dist/` |
-|---|---|
-| macOS | `BersihDisk-vX.Y.Z-macos-universal.dmg` (arm64 + x86_64, ad-hoc signed) |
+| Run on  | Output in `dist/`                                                       |
+| ------- | ----------------------------------------------------------------------- |
+| macOS   | `BersihDisk-vX.Y.Z-macos-universal.dmg` (arm64 + x86_64, ad-hoc signed) |
 | Windows | `…-windows-x86_64-setup.exe` (NSIS) and `…-windows-x86_64-portable.zip` |
-| Linux | `…-linux-x86_64.deb` and `…-linux-x86_64.tar.gz` |
+| Linux   | `…-linux-x86_64.deb` and `…-linux-x86_64.tar.gz`                        |
 
 On Windows without `make`, run `bash scripts/package.sh` from Git Bash — it is the
 same script.
 
 ## 🛠 Make targets
 
-| Target | Purpose |
-|---|---|
-| `make run` | build and launch the app |
-| `make dev` | development mode with hot reload |
-| `make build` | production build for the current OS |
-| `make package` | build + package the current OS into `dist/` (dmg / setup.exe + zip / deb + tar.gz) |
-| `make verify` | CI gate: gofmt, vet, tests, typecheck (no build) |
-| `make build-all` | build every platform (needs cross toolchains; CI packages each OS natively) |
-| `make test` | Go unit tests (`-race`) + frontend typecheck |
-| `make check` | full pre-commit gate: fmt, vet, tests, build |
-| `make lint` | vet + typecheck + frontend build |
-| `make fmt` / `make vet` / `make tidy` | Go hygiene |
-| `make bump patch\|minor\|major` | semantic bump (1.2.3 → 1.2.4 / 1.3.0 / 2.0.0) in `VERSION`, `wails.json`, `package.json` |
-| `make bump VER=1.2.3` | set an exact version |
-| `make release` | local dry run: verify + package this OS (publishes nothing) |
-| `make release-version VER=1.2.3` | bump and write the CHANGELOG entry (then commit and `make publish`) |
-| `make changelog-preview` | print the CHANGELOG entry for the current version |
-| `make changelog` | prepend that entry into `CHANGELOG.md` |
-| `make tag` | create the annotated git tag `v<version>` on HEAD |
-| `make release-notes` | write `dist/BersihDisk-v<version>-notes.md` from the entry |
-| `make publish` | tag `v<version>` and push it: GitHub Actions builds all three OSes and creates the release |
-| `make publish-local` | upload the artifacts built on this machine (`dist/`) — escape hatch |
-| `make install-deps` | install frontend dependencies |
-| `make doctor` | verify the toolchain (go, node, wails) |
-| `make install-wails-fix` | build the Go ≥ 1.24 compatible Wails CLI |
-| `make icons` | derive `build/appicon.png` + the in-app icon variants from `assets/logo.*` |
-| `make clean` / `distclean` | remove build output / plus `node_modules` |
+| Target                                | Purpose                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `make run`                            | build and launch the app                                                                   |
+| `make dev`                            | development mode with hot reload                                                           |
+| `make build`                          | production build for the current OS                                                        |
+| `make package`                        | build + package the current OS into `dist/` (dmg / setup.exe + zip / deb + tar.gz)         |
+| `make verify`                         | CI gate: gofmt, vet, tests, typecheck (no build)                                           |
+| `make build-all`                      | build every platform (needs cross toolchains; CI packages each OS natively)                |
+| `make test`                           | Go unit tests (`-race`) + frontend typecheck                                               |
+| `make check`                          | full pre-commit gate: fmt, vet, tests, build                                               |
+| `make lint`                           | vet + typecheck + frontend build                                                           |
+| `make fmt` / `make vet` / `make tidy` | Go hygiene                                                                                 |
+| `make bump patch\|minor\|major`       | semantic bump (1.2.3 → 1.2.4 / 1.3.0 / 2.0.0) in `VERSION`, `wails.json`, `package.json`   |
+| `make bump VER=1.2.3`                 | set an exact version                                                                       |
+| `make release`                        | local dry run: verify + package this OS (publishes nothing)                                |
+| `make release-version VER=1.2.3`      | bump and write the CHANGELOG entry (then commit and `make publish`)                        |
+| `make changelog-preview`              | print the CHANGELOG entry for the current version                                          |
+| `make changelog`                      | prepend that entry into `CHANGELOG.md`                                                     |
+| `make tag`                            | create the annotated git tag `v<version>` on HEAD                                          |
+| `make release-notes`                  | write `dist/BersihDisk-v<version>-notes.md` from the entry                                 |
+| `make publish`                        | tag `v<version>` and push it: GitHub Actions builds all three OSes and creates the release |
+| `make publish-local`                  | upload the artifacts built on this machine (`dist/`) — escape hatch                        |
+| `make install-deps`                   | install frontend dependencies                                                              |
+| `make doctor`                         | verify the toolchain (go, node, wails)                                                     |
+| `make install-wails-fix`              | build the Go ≥ 1.24 compatible Wails CLI                                                   |
+| `make icons`                          | derive `build/appicon.png` + the in-app icon variants from `assets/logo.*`                 |
+| `make clean` / `distclean`            | remove build output / plus `node_modules`                                                  |
 
 ### Versioning
 
@@ -385,7 +402,7 @@ make publish           # release commit + tag + push; GitHub Actions does the re
    is uncommitted, it runs `make changelog`, which writes the entry from the commit
    subjects and runs `git commit -am "chore: release 1.0.1"`. **`-am` commits every
    modified tracked file**, so commit or stash unrelated work first (`make changelog
-   COMMIT=0` writes the entry without committing).
+COMMIT=0` writes the entry without committing).
 3. Tag `v1.0.1`, push the branch and the tag. The tag starts `release.yml`, which
    builds and packages macOS, Windows and Linux and creates the GitHub release.
    Nothing is uploaded from your machine.
@@ -393,7 +410,7 @@ make publish           # release commit + tag + push; GitHub Actions does the re
 
 It refuses untracked files and a local tag that lags HEAD (`RETAG=1` moves it). If
 the tag is already on origin at the release commit it re-runs the workflow for that
-tag instead. If the tag on origin points at an *older* commit — a release that failed
+tag instead. If the tag on origin points at an _older_ commit — a release that failed
 and was then fixed — publish stops and `make publish RETAG=1` moves the tag to HEAD and
 force-pushes it (only do this for a version that never produced a release).
 `make publish GH=echo GIT_PUSH=echo` prints the git/gh commands without running
@@ -477,20 +494,20 @@ acknowledge → `StartUninstall` with step IDs → `uninstall:progress` /
 ## 🔒 Safety
 
 A tool that deletes files has to earn trust, so the destructive path is narrow,
-and the *backend* — not the UI — enforces every rule below.
+and the _backend_ — not the UI — enforces every rule below.
 
 **Every result carries a grade**, decided in Go and shown with its reason:
 
-| Grade | Meaning | What the app does |
-|---|---|---|
-| **Safe** | regenerated automatically, nothing lost | pre-ticked, one confirmation |
-| **Caution** | costs a re-download, may hold something unique (`~/.m2/repository`, a virtualenv, a folder with no project file beside it) | never ticked automatically, listed with reasons, needs an "I understand" checkbox |
-| **Danger** | can break an installed app or tool, or destroy data (a global `node_modules`, anything inside a `.app`, an editor extension, `nvm`/`pyenv` installs, `~/.gem`, simulator devices) | as caution, plus **Trash only** — Permanent is disabled |
-| **Protected** | never deleted: filesystem roots, the home folder, `Documents`/`Desktop`/…, `~/.ssh`, `~/.aws`, `~/.kube`, `/System`, `/usr/bin`, `C:\Windows`, `Program Files` | shown greyed out, checkbox disabled, refused again by the deleter |
+| Grade         | Meaning                                                                                                                                                                           | What the app does                                                                 |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **Safe**      | regenerated automatically, nothing lost                                                                                                                                           | pre-ticked, one confirmation                                                      |
+| **Caution**   | costs a re-download, may hold something unique (`~/.m2/repository`, a virtualenv, a folder with no project file beside it)                                                        | never ticked automatically, listed with reasons, needs an "I understand" checkbox |
+| **Danger**    | can break an installed app or tool, or destroy data (a global `node_modules`, anything inside a `.app`, an editor extension, `nvm`/`pyenv` installs, `~/.gem`, simulator devices) | as caution, plus **Trash only** — Permanent is disabled                           |
+| **Protected** | never deleted: filesystem roots, the home folder, `Documents`/`Desktop`/…, `~/.ssh`, `~/.aws`, `~/.kube`, `/System`, `/usr/bin`, `C:\Windows`, `Program Files`                    | shown greyed out, checkbox disabled, refused again by the deleter                 |
 
 How the grade is produced (`internal/safety`, `internal/rules`):
 
-- **Hard guard** — a path is checked as written *and* after resolving symlinks, so
+- **Hard guard** — a path is checked as written _and_ after resolving symlinks, so
   a link into `~/.ssh` cannot smuggle it in. The deleter calls the same guard, so
   even a bug elsewhere cannot delete a protected path.
 - **Context** — the surroundings of a match matter more than its name: inside an
@@ -498,7 +515,7 @@ How the grade is produced (`internal/safety`, `internal/rules`):
   global folder, or a package-manager prefix (`/opt/homebrew`, `/usr/local`).
 - **Project markers** — `node_modules` needs `package.json` beside it, `target/`
   needs `Cargo.toml` or `pom.xml`, `bin/obj` need a `.csproj`, and so on. Without
-  one the item is *caution*, not silently deleted.
+  one the item is _caution_, not silently deleted.
 - **Rule hints** — specific locations are raised above their category
   (`.m2/repository`, `~/.gem`, `.android/avd`, buildx builders, `.pub-cache/hosted`).
 - **Server-side enforcement** — `StartDelete` accepts only paths from the last
@@ -570,14 +587,14 @@ highest, and new categories and catalog entries are expected to arrive with test
 
 ## 🩺 Troubleshooting
 
-| Symptom | Fix |
-|---|---|
-| `wails dev` dies with `internal error: package "…" without types was imported` | Go ≥ 1.24 vs the published CLI: `make install-wails-fix` |
-| `make: wails: No such file` | `go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0`, or use the patched binary |
-| macOS blocks the app ("unidentified developer") | right-click the app → *Open*, or `xattr -dr com.apple.quarantine /Applications/BersihDisk.app` |
-| Scan misses folders under iCloud / external drives | check drive selection; the walk does not cross mount boundaries or symlinks |
-| A directory that should be cleanable is not listed | the content filter rejected it — open an issue with the path and its top-level contents |
-| Port 34115 already in use | another `wails dev` instance owns it; quit it or change the dev server port |
+| Symptom                                                                        | Fix                                                                                            |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `wails dev` dies with `internal error: package "…" without types was imported` | Go ≥ 1.24 vs the published CLI: `make install-wails-fix`                                       |
+| `make: wails: No such file`                                                    | `go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0`, or use the patched binary         |
+| macOS blocks the app ("unidentified developer")                                | right-click the app → _Open_, or `xattr -dr com.apple.quarantine /Applications/BersihDisk.app` |
+| Scan misses folders under iCloud / external drives                             | check drive selection; the walk does not cross mount boundaries or symlinks                    |
+| A directory that should be cleanable is not listed                             | the content filter rejected it — open an issue with the path and its top-level contents        |
+| Port 34115 already in use                                                      | another `wails dev` instance owns it; quit it or change the dev server port                    |
 
 ## 📑 Changelog & releases
 
@@ -590,14 +607,14 @@ Entries are generated from commit subjects rather than written by hand after the
 fact, which is why [conventional commits](CONTRIBUTING.md#8-pull-request-workflow)
 are required:
 
-| Commit subject | Lands in |
-|---|---|
-| `feat:` / `feat(scope):` | `### Added` |
-| `fix:` | `### Fixed` |
-| `perf:` `refactor:` `docs:` `test:` `i18n:` `build:` `ci:` `chore:` `style:` | `### Changed` |
-| `remove:` / `deprecate:` / `security:` | `### Removed` / `### Deprecated` / `### Security` |
-| anything else | `### Other` |
-| `feat!:` / `fix(scope)!:` | marked `**Breaking**` in its section |
+| Commit subject                                                               | Lands in                                          |
+| ---------------------------------------------------------------------------- | ------------------------------------------------- |
+| `feat:` / `feat(scope):`                                                     | `### Added`                                       |
+| `fix:`                                                                       | `### Fixed`                                       |
+| `perf:` `refactor:` `docs:` `test:` `i18n:` `build:` `ci:` `chore:` `style:` | `### Changed`                                     |
+| `remove:` / `deprecate:` / `security:`                                       | `### Removed` / `### Deprecated` / `### Security` |
+| anything else                                                                | `### Other`                                       |
+| `feat!:` / `fix(scope)!:`                                                    | marked `**Breaking**` in its section              |
 
 Each line keeps its short commit hash, so any entry can be traced back to the
 diff. The release workflow uploads the **curated CHANGELOG section** as the release

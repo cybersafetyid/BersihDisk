@@ -16,7 +16,7 @@ export type CategoryId =
   | "nodejs" | "go" | "rust" | "gradle" | "maven" | "cpp" | "python" | "dotnet"
   | "xcode" | "android" | "temp" | "ai" | "electron" | "docker" | "brew" | "php"
   | "pip" | "ruby" | "flutter" | "terraform" | "nuget" | "jetbrains" | "webbuild"
-  | "emulators";
+  | "emulators" | "npm" | "deno" | "uv" | "bazel" | "buildcache";
 
 /** How risky deleting something is; the backend decides, the UI only shows it. */
 export type Level = "safe" | "caution" | "danger" | "blocked";

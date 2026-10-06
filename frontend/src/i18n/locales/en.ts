@@ -266,7 +266,7 @@ const en = {
   },
   about: {
     title: "About BersihDisk",
-    body: "A disk cleaner for developers: scan drives, find caches and build artefacts across 24 categories, then delete them via Trash or permanently.",
+    body: "A disk cleaner for developers: scan drives, find caches and build artefacts across 29 categories, then delete them via Trash or permanently.",
   },
   nav: {
     label: "Choose a task",
@@ -437,8 +437,8 @@ const en = {
       risk: "Models must be downloaded again (can be tens of GB)",
     },
     electron: {
-      name: "Electron & Browser Cache",
-      desc: "electron, npm/yarn/pnpm, Playwright and Cypress caches",
+      name: "Electron & Test Browsers",
+      desc: "Electron binaries plus Playwright, Cypress and Puppeteer browser caches",
       risk: "Test browsers and Electron binaries need re-downloading",
     },
     docker: {
@@ -448,7 +448,7 @@ const en = {
     },
     brew: { name: "Homebrew", desc: "Bottles, source downloads & formula cache" },
     php: { name: "PHP & Composer", desc: "Composer repository and download archives" },
-    pip: { name: "Python Package Cache", desc: "pip, uv, Poetry and conda pkgs wheel/sdist cache" },
+    pip: { name: "pip & Poetry Cache", desc: "pip, Poetry and conda pkgs wheel/sdist cache" },
     ruby: {
       name: "Ruby & Gems",
       desc: "bundler cache and gem directories",
@@ -470,6 +470,26 @@ const en = {
       name: "Emulator & Simulator",
       desc: "Android AVDs, iOS Simulator data and device images",
       risk: "Emulator/simulator data (apps, photos, snapshots) is deleted for good",
+    },
+    npm: {
+      name: "Node Package Managers",
+      desc: "npm, pnpm, yarn and bun stores plus node-gyp headers",
+    },
+    deno: {
+      name: "Deno Cache",
+      desc: "Dependencies and compiled modules cached by Deno",
+    },
+    uv: {
+      name: "uv Cache",
+      desc: "Python wheels and builds cached by the uv package manager",
+    },
+    bazel: {
+      name: "Bazel Cache",
+      desc: "Bazel build output and the bazelisk download cache",
+    },
+    buildcache: {
+      name: "Compiler Cache",
+      desc: "ccache and sccache compilation caches that rebuild on the next build",
     },
   },
 } satisfies Dictionary;

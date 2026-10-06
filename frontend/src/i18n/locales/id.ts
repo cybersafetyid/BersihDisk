@@ -267,7 +267,7 @@ const id = {
   },
   about: {
     title: "Tentang BersihDisk",
-    body: "Pembersih disk untuk developer: memindai drive, menemukan cache dan artefak build dari 24 kategori, lalu menghapusnya lewat Tempat Sampah atau permanen.",
+    body: "Pembersih disk untuk developer: memindai drive, menemukan cache dan artefak build dari 29 kategori, lalu menghapusnya lewat Tempat Sampah atau permanen.",
   },
   nav: {
     label: "Pilih tugas",
@@ -438,8 +438,8 @@ const id = {
       risk: "Model harus diunduh ulang (bisa puluhan GB) setelah dihapus",
     },
     electron: {
-      name: "Electron & Browser Cache",
-      desc: "Cache electron, npm/yarn/pnpm, Playwright, Cypress",
+      name: "Electron & Browser Uji",
+      desc: "Binary Electron serta cache Playwright, Cypress, dan Puppeteer",
       risk: "Browser uji dan binary Electron perlu diunduh ulang",
     },
     docker: {
@@ -449,7 +449,7 @@ const id = {
     },
     brew: { name: "Homebrew", desc: "Bottle, source download & cache formula" },
     php: { name: "PHP & Composer", desc: "Repositori dan arsip unduhan Composer" },
-    pip: { name: "Python Package Cache", desc: "Wheel/sdist cache pip, uv, Poetry, dan conda pkgs" },
+    pip: { name: "Cache pip & Poetry", desc: "Wheel/sdist cache pip, Poetry, dan conda pkgs" },
     ruby: {
       name: "Ruby & Gems",
       desc: "Cache bundler dan direktori gem",
@@ -471,6 +471,26 @@ const id = {
       name: "Emulator & Simulator",
       desc: "AVD Android, data iOS Simulator, dan image perangkat",
       risk: "Data emulator/simulator (app, foto, snapshot) ikut terhapus dan tidak bisa dipulihkan",
+    },
+    npm: {
+      name: "Manajer Paket Node",
+      desc: "Store npm, pnpm, yarn, dan bun serta header node-gyp",
+    },
+    deno: {
+      name: "Cache Deno",
+      desc: "Dependensi dan modul terkompilasi yang di-cache Deno",
+    },
+    uv: {
+      name: "Cache uv",
+      desc: "Wheel dan build Python yang di-cache manajer paket uv",
+    },
+    bazel: {
+      name: "Cache Bazel",
+      desc: "Output build Bazel dan cache unduhan bazelisk",
+    },
+    buildcache: {
+      name: "Cache Kompilator",
+      desc: "Cache kompilasi ccache dan sccache yang dibangun ulang saat build berikutnya",
     },
   } satisfies Record<CategoryId, { name: string; desc: string; risk?: string }>,
 };

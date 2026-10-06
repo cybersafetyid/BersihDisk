@@ -12,58 +12,68 @@ import (
 
 // Category IDs.
 const (
-	CatNodeJS    = "nodejs"
-	CatGo        = "go"
-	CatRust      = "rust"
-	CatGradle    = "gradle"
-	CatMaven     = "maven"
-	CatCpp       = "cpp"
-	CatPython    = "python"
-	CatDotnet    = "dotnet"
-	CatXcode     = "xcode"
-	CatAndroid   = "android"
-	CatTemp      = "temp"
-	CatAICache   = "ai"
-	CatElectron  = "electron"
-	CatDocker    = "docker"
-	CatBrew      = "brew"
-	CatPHP       = "php"
-	CatPip       = "pip"
-	CatRuby      = "ruby"
-	CatFlutter   = "flutter"
-	CatTerraform = "terraform"
-	CatNuGet     = "nuget"
-	CatJetBrains = "jetbrains"
-	CatWebBuild  = "webbuild"
-	CatEmulators = "emulators"
+	CatNodeJS     = "nodejs"
+	CatGo         = "go"
+	CatRust       = "rust"
+	CatGradle     = "gradle"
+	CatMaven      = "maven"
+	CatCpp        = "cpp"
+	CatPython     = "python"
+	CatDotnet     = "dotnet"
+	CatXcode      = "xcode"
+	CatAndroid    = "android"
+	CatTemp       = "temp"
+	CatAICache    = "ai"
+	CatElectron   = "electron"
+	CatDocker     = "docker"
+	CatBrew       = "brew"
+	CatPHP        = "php"
+	CatPip        = "pip"
+	CatRuby       = "ruby"
+	CatFlutter    = "flutter"
+	CatTerraform  = "terraform"
+	CatNuGet      = "nuget"
+	CatJetBrains  = "jetbrains"
+	CatWebBuild   = "webbuild"
+	CatEmulators  = "emulators"
+	CatNpm        = "npm"
+	CatDeno       = "deno"
+	CatUv         = "uv"
+	CatBazel      = "bazel"
+	CatBuildCache = "buildcache"
 )
 
 // Icon names resolved to SVGs by the frontend (simple-icons / lucide).
 const (
-	IconNodeJS    = "nodedotjs"
-	IconGo        = "go"
-	IconRust      = "rust"
-	IconGradle    = "gradle"
-	IconMaven     = "apachemaven"
-	IconCpp       = "cmake"
-	IconPython    = "python"
-	IconDotnet    = "dotnet"
-	IconXcode     = "xcode"
-	IconAndroid   = "android"
-	IconTemp      = "eraser"
-	IconAICache   = "ollama"
-	IconElectron  = "electron"
-	IconDocker    = "docker"
-	IconBrew      = "homebrew"
-	IconPHP       = "php"
-	IconPip       = "pypi"
-	IconRuby      = "rubygems"
-	IconFlutter   = "flutter"
-	IconTerraform = "terraform"
-	IconNuGet     = "nuget"
-	IconJetBrains = "jetbrains"
-	IconWebBuild  = "vite"
-	IconEmulators = "monitor"
+	IconNodeJS     = "nodedotjs"
+	IconGo         = "go"
+	IconRust       = "rust"
+	IconGradle     = "gradle"
+	IconMaven      = "apachemaven"
+	IconCpp        = "cmake"
+	IconPython     = "python"
+	IconDotnet     = "dotnet"
+	IconXcode      = "xcode"
+	IconAndroid    = "android"
+	IconTemp       = "eraser"
+	IconAICache    = "ollama"
+	IconElectron   = "electron"
+	IconDocker     = "docker"
+	IconBrew       = "homebrew"
+	IconPHP        = "php"
+	IconPip        = "pypi"
+	IconRuby       = "rubygems"
+	IconFlutter    = "flutter"
+	IconTerraform  = "terraform"
+	IconNuGet      = "nuget"
+	IconJetBrains  = "jetbrains"
+	IconWebBuild   = "vite"
+	IconEmulators  = "monitor"
+	IconNpm        = "npm"
+	IconDeno       = "deno"
+	IconUv         = "astral"
+	IconBazel      = "bazel"
+	IconBuildCache = "cmake"
 )
 
 // Hint raises the risk of items whose path ends with Suffix ("/" separators,
@@ -438,7 +448,7 @@ func All() []Rule {
 			maxDepth:       4,
 			contentFilters: map[string]func([]string) bool{"build": buildFilter},
 			markers:        map[string][]string{"build": gradleProject},
-			homePaths:      []string{"unix:.gradle/caches", "win:.gradle/caches"},
+			homePaths:      []string{"unix:.gradle/caches", "win:.gradle/caches", "unix:.gradle/wrapper/dists", "win:.gradle/wrapper/dists"},
 		},
 		{
 			ID:             CatMaven,
@@ -485,6 +495,8 @@ func All() []Rule {
 			homePaths: []string{
 				"unix:Library/Developer/Xcode/DerivedData",
 				"unix:Library/Developer/Xcode/iOS DeviceSupport",
+				"unix:Library/Developer/Xcode/watchOS DeviceSupport",
+				"unix:Library/Developer/Xcode/iOS Device Logs",
 				"unix:Library/Developer/CoreSimulator/Caches",
 				"unix:Library/Caches/com.apple.dt.Xcode",
 			},
@@ -532,21 +544,12 @@ func All() []Rule {
 			homePaths: []string{
 				"unix:Library/Caches/electron",
 				"win:AppData/Local/electron/Cache",
-				".npm/_cacache",
-				".npm/_npx",
-				"win:AppData/Local/npm-cache", // npm's cache default on Windows
-				".cache/yarn",
-				"unix:Library/Caches/Yarn",
-				"win:AppData/Local/Yarn/Cache",
-				".yarn/berry/cache",
-				".cache/pnpm",
-				"unix:.local/share/pnpm/store",
-				"unix:Library/pnpm/store",
-				"win:AppData/Local/pnpm/store",
 				"unix:Library/Caches/ms-playwright",
 				".cache/ms-playwright",
 				"unix:Library/Caches/Cypress",
 				".cache/Cypress",
+				"unix:Library/Caches/puppeteer",
+				".cache/puppeteer",
 			},
 		},
 		{
@@ -587,11 +590,7 @@ func All() []Rule {
 				".cache/pip",
 				"unix:Library/Caches/pip",
 				"win:AppData/Local/pip/Cache",
-				"win:AppData/Local/uv/cache",
 				"win:AppData/Local/pypoetry/Cache",
-				".cache/uv",
-				"unix:Library/Caches/uv",
-				".local/share/uv/cache",
 				"unix:Library/Caches/pypoetry",
 				".cache/pypoetry",
 				".conda/pkgs",
@@ -683,6 +682,68 @@ func All() []Rule {
 				"unix:Library/Developer/CoreSimulator/Devices",
 				"unix:Library/Developer/CoreSimulator/Caches/dyld",
 				"win:AppData/Local/Android/avd",
+			},
+		},
+		{
+			ID:   CatNpm,
+			Icon: IconNpm,
+			// The shared stores behind npm/pnpm/yarn/bun and the node-gyp headers:
+			// packages re-download on the next install, so clearing them is safe.
+			homePaths: []string{
+				".npm/_cacache",
+				".npm/_npx",
+				"win:AppData/Local/npm-cache",
+				".node-gyp",
+				".cache/yarn",
+				"unix:Library/Caches/Yarn",
+				"win:AppData/Local/Yarn/Cache",
+				".yarn/berry/cache",
+				".cache/pnpm",
+				"unix:.local/share/pnpm/store",
+				"unix:Library/pnpm/store",
+				"win:AppData/Local/pnpm/store",
+				".bun/install/cache",
+			},
+		},
+		{
+			ID:   CatDeno,
+			Icon: IconDeno,
+			homePaths: []string{
+				".cache/deno",
+				"unix:Library/Caches/deno",
+				"win:AppData/Local/deno",
+			},
+		},
+		{
+			ID:   CatUv,
+			Icon: IconUv,
+			// uv's (Astral) download cache — wheels and build artifacts re-fetch.
+			homePaths: []string{
+				".cache/uv",
+				"unix:Library/Caches/uv",
+				"unix:.local/share/uv/cache",
+				"win:AppData/Local/uv/cache",
+			},
+		},
+		{
+			ID:   CatBazel,
+			Icon: IconBazel,
+			homePaths: []string{
+				".cache/bazel",
+				".cache/bazelisk",
+			},
+		},
+		{
+			ID:   CatBuildCache,
+			Icon: IconBuildCache,
+			// ccache/sccache speed up rebuilds but regenerate; clearing only costs time.
+			homePaths: []string{
+				".cache/ccache",
+				"unix:Library/Caches/ccache",
+				"win:AppData/Local/ccache",
+				".cache/sccache",
+				"unix:Library/Caches/sccache",
+				"win:AppData/Local/sccache",
 			},
 		},
 	}

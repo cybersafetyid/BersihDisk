@@ -227,7 +227,7 @@ func TestCachePathsMatchVendorDocumentation(t *testing.T) {
 	// Windows too, npm keeps its cache in %LocalAppData%\npm-cache, and Go's build
 	// cache is %LocalAppData%\go-build.
 	for cat, want := range map[string]string{
-		CatRust: ".cargo/registry", CatElectron: "win:AppData/Local/npm-cache", CatGo: "win:AppData/Local/go-build",
+		CatRust: ".cargo/registry", CatNpm: "win:AppData/Local/npm-cache", CatGo: "win:AppData/Local/go-build",
 		CatPip: "win:AppData/Local/pip/Cache",
 	} {
 		if !has(cat, want) {
@@ -236,5 +236,25 @@ func TestCachePathsMatchVendorDocumentation(t *testing.T) {
 	}
 	if has(CatRust, "win:AppData/Local/Cargo/registry") {
 		t.Error("Cargo does not use %LocalAppData% on Windows")
+	}
+	// Developer-store caches added from tool documentation and community practice.
+	for _, c := range []struct{ cat, want string }{
+		{CatNpm, ".bun/install/cache"},
+		{CatNpm, "unix:Library/pnpm/store"},
+		{CatDeno, "unix:Library/Caches/deno"},
+		{CatUv, ".cache/uv"},
+		{CatBazel, ".cache/bazel"},
+		{CatBuildCache, ".cache/sccache"},
+		{CatElectron, ".cache/puppeteer"},
+	} {
+		if !has(c.cat, c.want) {
+			t.Errorf("%s lacks %s", c.cat, c.want)
+		}
+	}
+	if has(CatElectron, ".npm/_cacache") {
+		t.Error("npm caches moved out of the Electron category into npm")
+	}
+	if has(CatPip, ".cache/uv") {
+		t.Error("uv caches moved out of the pip category into uv")
 	}
 }

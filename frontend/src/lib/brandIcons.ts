@@ -31,6 +31,8 @@ import {
   siComposer,
   siRuby,
   siOpenjdk,
+  siNpm,
+  siBazel,
 } from "simple-icons";
 
 export const brandIcons: Record<string, { path: string; title: string }> = {
@@ -64,4 +66,6 @@ export const brandIcons: Record<string, { path: string; title: string }> = {
   composer: siComposer,
   ruby: siRuby,
   openjdk: siOpenjdk,
+  npm: siNpm,
+  bazel: siBazel,
 };
