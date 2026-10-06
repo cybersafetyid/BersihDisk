@@ -86,7 +86,7 @@ type App struct {
 	analyzeItems map[string]scanner.Item // drive-analyzer entries seen this session, by cleaned path
 	release      updater.Info            // last CheckUpdate result; the download URL and digest come from here
 	updateFile   string
-	mounts       []string                // detected drive mount points; analysis and deletion are confined to these
+	mounts       []string // detected drive mount points; analysis and deletion are confined to these
 }
 
 // isInside reports whether child is parent itself or lies below it.

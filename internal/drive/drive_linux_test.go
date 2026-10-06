@@ -12,7 +12,7 @@ func TestParentDisk(t *testing.T) {
 		want string
 	}{
 		{"sdb1", "sdb"},
-		{"sda", "sda"},         // no partition suffix — leave the disk name intact
+		{"sda", "sda"}, // no partition suffix — leave the disk name intact
 		{"vda2", "vda"},
 		{"xvda1", "xvda"},
 		{"nvme0n1", "nvme0n1"}, // bare namespace: the digits belong to the disk name
