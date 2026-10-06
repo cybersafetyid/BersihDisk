@@ -45,6 +45,7 @@ type DriveUI struct {
 	MountPoint string `json:"mountPoint"`
 	TotalBytes uint64 `json:"totalBytes"`
 	FreeBytes  uint64 `json:"freeBytes"`
+	UsedBytes  uint64 `json:"usedBytes"` // from Info.UsedBytes, clamped against underflow
 	Root       bool   `json:"root"`
 	Removable  bool   `json:"removable"`
 }
@@ -85,6 +86,7 @@ type App struct {
 	analyzeItems map[string]scanner.Item // drive-analyzer entries seen this session, by cleaned path
 	release      updater.Info            // last CheckUpdate result; the download URL and digest come from here
 	updateFile   string
+	mounts       []string                // detected drive mount points; analysis and deletion are confined to these
 }
 
 // isInside reports whether child is parent itself or lies below it.
@@ -125,6 +127,56 @@ func (a *App) itemFor(path string) (scanner.Item, bool) {
 func (a *App) deletable(path string) bool {
 	_, ok := a.itemFor(path)
 	return ok
+}
+
+// isInsideOrEqual reports whether child is parent itself or lies below it.
+func isInsideOrEqual(child, parent string) bool {
+	return child == parent || isInside(child, parent)
+}
+
+// withinDrive reports whether path sits on (or under) one of the detected drive
+// mount points. An empty mount set means detection has not run yet and is treated
+// as "allowed", so a transient detection failure never wedges the UI.
+func withinDrive(path string, mounts []string) bool {
+	if len(mounts) == 0 {
+		return true
+	}
+	path = filepath.Clean(path)
+	for _, m := range mounts {
+		if isInsideOrEqual(path, m) {
+			return true
+		}
+	}
+	return false
+}
+
+// knownMounts returns the cached mount points of the detected drives, filling the
+// cache on first use. Analysis and deletion are confined to these, so the frontend
+// cannot name an arbitrary location outside a real volume as a target.
+func (a *App) knownMounts() []string {
+	a.mu.Lock()
+	m := a.mounts
+	a.mu.Unlock()
+	if len(m) == 0 {
+		m = a.driveMounts()
+		a.mu.Lock()
+		a.mounts = m
+		a.mu.Unlock()
+	}
+	return m
+}
+
+// driveMounts lists the mount points of the drives the app can currently see.
+func (a *App) driveMounts() []string {
+	list, err := drive.Detect()
+	if err != nil {
+		return nil
+	}
+	mounts := make([]string, 0, len(list))
+	for _, d := range list {
+		mounts = append(mounts, filepath.Clean(d.MountPoint))
+	}
+	return mounts
 }
 
 // NewApp creates the App instance.
@@ -169,16 +221,22 @@ func (a *App) DetectDrives() []DriveUI {
 		return []DriveUI{}
 	}
 	out := make([]DriveUI, 0, len(list))
+	mounts := make([]string, 0, len(list))
 	for _, d := range list {
 		out = append(out, DriveUI{
 			Name:       d.Name,
 			MountPoint: d.MountPoint,
 			TotalBytes: d.TotalBytes,
 			FreeBytes:  d.FreeBytes,
+			UsedBytes:  d.UsedBytes(),
 			Root:       d.Root,
 			Removable:  d.Removable,
 		})
+		mounts = append(mounts, filepath.Clean(d.MountPoint))
 	}
+	a.mu.Lock()
+	a.mounts = mounts
+	a.mu.Unlock()
 	return out
 }
 
@@ -231,6 +289,20 @@ func (a *App) Reveal(path string) error {
 // StartScan runs an asynchronous scan; progress via the "scan:progress" event,
 // result via "scan:finished".
 func (a *App) StartScan(req ScanRequest) string {
+	// The frontend is not trusted to name roots outside a real volume: keep only
+	// those that lie on a detected drive.
+	mounts := a.knownMounts()
+	roots := make([]string, 0, len(req.Roots))
+	for _, r := range req.Roots {
+		if withinDrive(r, mounts) {
+			roots = append(roots, r)
+		}
+	}
+	if len(roots) == 0 {
+		wailsruntime.EventsEmit(a.ctx, "scan:finished", scanner.Result{})
+		return "denied"
+	}
+
 	a.mu.Lock()
 	if a.scanner != nil {
 		a.scanner.Cancel()
@@ -242,7 +314,7 @@ func (a *App) StartScan(req ScanRequest) string {
 	a.mu.Unlock()
 
 	go func() {
-		res := s.Scan(req.Roots, req.Categories)
+		res := s.Scan(roots, req.Categories)
 		a.mu.Lock()
 		current := a.scanner == s
 		if current {
@@ -284,6 +356,15 @@ type AnalyzeOutcome struct {
 // Entries are remembered for the session, so a folder shown here can be deleted
 // through StartDelete — which still re-checks the risk before anything is removed.
 func (a *App) StartAnalyze(path string) string {
+	// Refuse to analyze (and therefore offer for deletion) any location outside a
+	// detected drive — the frontend cannot pick an arbitrary workspace.
+	if !withinDrive(path, a.knownMounts()) {
+		wailsruntime.EventsEmit(a.ctx, "analyze:finished", AnalyzeOutcome{
+			Result: analyzer.Result{Path: filepath.Clean(path)},
+			Error:  "path is outside a detected drive",
+		})
+		return "denied"
+	}
 	a.mu.Lock()
 	if a.analyzer != nil {
 		a.analyzer.Cancel()
@@ -340,7 +421,12 @@ func (a *App) CancelAnalyze() {
 // deleter, the paths refused with why, and the mode to use.
 func (a *App) vetDelete(req DeleteRequest) (items []deleter.Item, denied []deleter.Failure, mode string) {
 	worst := safety.Safe
+	mounts := a.knownMounts()
 	for i, p := range req.Paths {
+		if !withinDrive(p, mounts) {
+			denied = append(denied, deleter.Failure{Path: p, Message: "outside a detected drive"})
+			continue
+		}
 		it, ok := a.itemFor(p)
 		switch {
 		case !ok:

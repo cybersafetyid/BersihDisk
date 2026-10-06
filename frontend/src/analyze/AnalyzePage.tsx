@@ -9,6 +9,7 @@ import { DriveSelector } from "../drives/DriveSelector";
 import { Sunburst, paletteColor, type Ring } from "./Sunburst";
 import type { RiskEntry } from "../results/ConfirmModal";
 import { formatSize, formatNumber, formatPercent, shortPath } from "../lib/format";
+import { isInside } from "../lib/paths";
 import * as api from "../backend";
 import { useI18n } from "../i18n/i18n";
 import type { AnalyzeEntry, AnalyzeProgress, DriveUI, Level } from "../lib/types";
@@ -117,7 +118,9 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
   const toCrumb = (index: number) => setRings((rs) => rs.slice(0, index + 1));
 
   const toggle = (entry: AnalyzeEntry) => {
-    if (entry.level === "blocked") return;
+    // A blocked location can never be deleted, and a skipped one was never
+    // measured (its size is unknown), so neither is selectable.
+    if (entry.level === "blocked" || entry.skipped) return;
     setSelected((s) => {
       const n = new Set(s);
       n.has(entry.path) ? n.delete(entry.path) : n.add(entry.path);
@@ -140,36 +143,48 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
     [current],
   );
 
+  // The locations actually deleted: drop any selected path that sits inside
+  // another selected one, because its ancestor removes it too (the deleter
+  // dedups the same way). Keeps the promised space, the count, and the delete
+  // payload consistent with what will really be removed.
+  const deletePaths = useMemo(() => {
+    const paths = [...selected];
+    return paths.filter((p) => !paths.some((q) => q !== p && isInside(p, q)));
+  }, [selected]);
+
   const selectedBytes = useMemo(() => {
     let total = 0;
-    for (const path of selected) total += known.get(path)?.size ?? 0;
+    for (const path of deletePaths) total += known.get(path)?.size ?? 0;
     return total;
-  }, [selected, known]);
+  }, [deletePaths, known]);
 
   const risks = useMemo<RiskEntry[]>(() => {
     const out: RiskEntry[] = [];
-    for (const path of selected) {
+    for (const path of deletePaths) {
       const k = known.get(path);
       if (!k || (k.level !== "caution" && k.level !== "danger")) continue;
       out.push({ path, level: k.level, reasons: k.reasons });
     }
     return out;
-  }, [selected, known]);
+  }, [deletePaths, known]);
 
   const riskyCount = current ? current.entries.filter((e) => e.level === "caution" || e.level === "danger").length : 0;
   const blockedCount = current ? current.entries.filter((e) => e.level === "blocked").length : 0;
 
   const requestDelete = () => {
-    if (selected.size === 0) return;
-    const paths = [...selected];
-    onDelete(paths, paths.map((x) => known.get(x)?.size ?? 0), risks, selectedBytes);
+    if (deletePaths.length === 0) return;
+    onDelete(deletePaths, deletePaths.map((x) => known.get(x)?.size ?? 0), risks, selectedBytes);
   };
 
   const cancel = () => {
-    api.cancelAnalyze().catch(() => {});
-    setAnalyzing(false);
-    setProgress(null);
-    pending.current = null;
+    api.cancelAnalyze().catch(() => {
+      // Only if the binding itself fails do we drop the in-flight listing. On the
+      // normal path the backend stops, finishes the listing as partial, and emits
+      // it — the finished handler then renders the partial result with its badge.
+      pending.current = null;
+      setAnalyzing(false);
+      setProgress(null);
+    });
   };
 
   return (
@@ -299,7 +314,7 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
                         <input
                           type="checkbox"
                           checked={checked}
-                          disabled={blocked}
+                          disabled={blocked || e.skipped}
                           onChange={() => toggle(e)}
                           aria-label={t("analyze.select", { name: e.name })}
                         />
@@ -335,13 +350,13 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
           )}
 
           <div className="action-bar">
-            {selected.size === 0 ? (
+            {deletePaths.length === 0 ? (
               <span className="action-info muted">{t("analyze.selectHint")}</span>
             ) : (
-              <span className="action-info">{t("results.selectedCount", { count: selected.size, size: formatSize(selectedBytes) })}</span>
+              <span className="action-info">{t("results.selectedCount", { count: deletePaths.length, size: formatSize(selectedBytes) })}</span>
             )}
             <div className="action-right">
-              <button className="btn btn-primary btn-large" disabled={selected.size === 0} onClick={requestDelete}>
+              <button className="btn btn-primary btn-large" disabled={deletePaths.length === 0} onClick={requestDelete}>
                 {t("results.deleteSelected")}
               </button>
             </div>

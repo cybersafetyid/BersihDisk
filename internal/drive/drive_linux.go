@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"golang.org/x/sys/unix"
@@ -53,7 +54,10 @@ func detectLinux() ([]Info, error) {
 		case mp == "/":
 			d.Name, d.Root = "System (/)", true
 		case mp == home:
-			d.Name, d.Root = "Home (/home)", true
+			// Home gets a friendly name but is NOT the system drive. Marking it Root
+			// would auto-select it next to "/", and since "/" is a parent mount of
+			// /home the scan would then walk /home twice and double-count it.
+			d.Name = "Home (/home)"
 		default:
 			d.Name = filepath.Base(mp)
 			if len(d.Name) > 24 {
@@ -84,14 +88,28 @@ func isRealDevice(dev string) bool {
 	return true
 }
 
-// isRemovableLinux reads /sys/block/<dev>/removable when available.
-func isRemovableLinux(dev string) bool {
-	base := filepath.Base(dev)
-	name := strings.TrimLeft(base, "0123456789")
-	if i := strings.Index(base, name); i > 0 {
-		base = base[i:] // keep the partition number
+// partitionedDiskRe matches an nvme or mmcblk whole-disk name, optionally
+// followed by a "p<partition>" suffix. Their disk names embed digits (nvme0n1,
+// mmcblk0), so only the "p<digits>" tail marks a partition.
+var partitionedDiskRe = regexp.MustCompile(`^(nvme\d+n\d+|mmcblk\d+)(p\d+)?$`)
+
+// parentDisk maps a partition device name to its whole-disk block name, which is
+// what /sys/block is keyed by: "sdb1" -> "sdb", "nvme0n1p2" -> "nvme0n1",
+// "mmcblk0p1" -> "mmcblk0". A name without a partition suffix is returned as-is.
+func parentDisk(name string) string {
+	if m := partitionedDiskRe.FindStringSubmatch(name); m != nil {
+		return m[1] // nvme/mmcblk: the disk name, minus any trailing "p<digits>"
 	}
-	f, err := os.Open(filepath.Join("/sys/block", name, "removable"))
+	// SCSI / virtio / Xen style (sda1, vdb2, xvda1): trailing digits are the
+	// partition number; a name ending in a letter (sda) is left untouched.
+	return strings.TrimRight(name, "0123456789")
+}
+
+// isRemovableLinux reports whether the parent disk of a device is removable by
+// reading /sys/block/<parent>/removable. Checking the partition itself (e.g.
+// "sdb1") always misses it, because /sys/block lists whole disks only.
+func isRemovableLinux(dev string) bool {
+	f, err := os.Open(filepath.Join("/sys/block", parentDisk(filepath.Base(dev)), "removable"))
 	if err != nil {
 		return false
 	}

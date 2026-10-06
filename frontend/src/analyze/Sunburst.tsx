@@ -133,8 +133,10 @@ export function Sunburst({ rings, selected, onDrill, onSelect, onHover, onUp }: 
 
   const activate = (seg: Segment, ringIndex: number) => {
     const e = seg.entry;
-    if (!e) return;
-    if (e.isDir && !e.skipped) onDrill(e, ringIndex);
+    // The "other" aggregate has no entry to act on, and a skipped folder was never
+    // measured — neither should drill or select.
+    if (!e || e.skipped) return;
+    if (e.isDir) onDrill(e, ringIndex);
     else onSelect(e);
   };
 

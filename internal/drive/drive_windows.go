@@ -30,12 +30,13 @@ func detectWindows() ([]Info, error) {
 		}
 
 		volBuf := make([]uint16, 261)
-		var volLen uint32
 		_ = windows.GetVolumeInformation(
 			windows.StringToUTF16Ptr(root),
-			&volBuf[0], uint32(len(volBuf))*2, nil, nil, nil,
+			&volBuf[0], uint32(len(volBuf)), nil, nil, nil,
 			nil, 0)
-		label := syscall.UTF16ToString(volBuf[:volLen])
+		// GetVolumeInformationW writes a null-terminated label and returns no length,
+		// so read up to the terminator; slicing by an (always-zero) counter yielded "".
+		label := syscall.UTF16ToString(volBuf)
 
 		d := Info{
 			Name:       label,

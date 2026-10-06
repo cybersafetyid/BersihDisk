@@ -5,6 +5,8 @@ export interface DriveUI {
   mountPoint: string;
   totalBytes: number;
   freeBytes: number;
+  /** Used space as the backend computed it (clamped against underflow). */
+  usedBytes: number;
   root: boolean;
   removable: boolean;
 }

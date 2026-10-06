@@ -2,6 +2,7 @@
 // a missing key returns the key itself so the mistake is visible in the UI.
 import { useMemo } from "react";
 import type { Lang } from "../lib/types";
+import { setLocale } from "../lib/format";
 import { useSettings } from "../lib/settings";
 import id from "./locales/id";
 import en from "./locales/en";
@@ -57,16 +58,18 @@ export interface TFunc {
 }
 
 export function useT(lang: Lang): TFunc {
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    // Keep the number/size formatters in step with the active language, so digits
+    // read the same way everywhere the translations do.
+    setLocale(lang);
+    return {
       lang,
       t: (path: string, vars?: Vars) => translate(lang, path, vars),
       tl: (path: string) => translateList(lang, path),
       p: (base: string, n: number) =>
         translate(lang, `${base}${lang === "en" && n === 1 ? "One" : "Many"}`),
-    }),
-    [lang],
-  );
+    };
+  }, [lang]);
 }
 
 /** Convenience hook: translations for the language currently in settings. */

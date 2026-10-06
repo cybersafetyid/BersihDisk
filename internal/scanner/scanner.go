@@ -281,11 +281,16 @@ func markNested(items []Item) {
 
 // walkJob is one directory handed to the walker pool. depth is its distance from
 // the scan root; tag is the index of the candidate being measured and is unused
-// during the search phase.
+// during the search phase. dev/sameFS confine a walk to one filesystem: when
+// sameFS is set, a directory whose device differs from dev (another volume
+// mounted in place) is not descended into, so a drive scan never counts a foreign
+// disk or becomes stuck walking one.
 type walkJob struct {
-	dir   string
-	tag   int
-	depth int
+	dir    string
+	tag    int
+	depth  int
+	dev    uint64
+	sameFS bool
 }
 
 // walkSpec configures one run of walkPool.
@@ -364,13 +369,22 @@ func readDir(path string) ([]os.DirEntry, error) {
 func descendJobs(ents []os.DirEntry, parent walkJob) []walkJob {
 	var out []walkJob
 	for _, e := range ents {
-		if e.IsDir() {
-			out = append(out, walkJob{
-				dir:   filepath.Join(parent.dir, e.Name()),
-				tag:   parent.tag,
-				depth: parent.depth + 1,
-			})
+		if !e.IsDir() {
+			continue
 		}
+		child := filepath.Join(parent.dir, e.Name())
+		if parent.sameFS {
+			if dev, ok := fsDevice(child); ok && dev != parent.dev {
+				continue // another filesystem is mounted here; stay on this drive
+			}
+		}
+		out = append(out, walkJob{
+			dir:    child,
+			tag:    parent.tag,
+			depth:  parent.depth + 1,
+			dev:    parent.dev,
+			sameFS: parent.sameFS,
+		})
 	}
 	return out
 }
@@ -441,27 +455,36 @@ func (d *dirStack) abort() {
 
 // Sizes returns the recursive apparent size of each path using one shared pool of
 // walkers, in the order given. The folder browser uses it to size the child
-// directories of a result without reading them one at a time.
+// directories of a result without reading them one at a time. It crosses mount
+// boundaries freely — a browser drill is already scoped to one volume.
 func Sizes(paths []string) []int64 {
-	return treeSizes(paths, scanWorkers(), nil, nil, nil)
+	return treeSizes(paths, scanWorkers(), nil, false, nil, nil)
 }
 
 // MeasureTree is Sizes with cancellation and a per-directory progress callback.
 // The drive analyzer uses it to size a folder's children in one pass while
-// remaining responsive to Cancel and able to publish what it is walking.
+// remaining responsive to Cancel and able to publish what it is walking. The walk
+// is confined to each child's own filesystem so analysing "/" never measures
+// another mounted volume.
 func MeasureTree(paths []string, cancel <-chan struct{}, onVisit func(dir string)) []int64 {
-	return treeSizes(paths, scanWorkers(), cancel, onVisit, nil)
+	return treeSizes(paths, scanWorkers(), cancel, true, onVisit, nil)
 }
 
 // treeSizes walks every root with one pool and reports each root's apparent size.
 // onVisit observes progress (current directory), and onDone fires for a root only
 // once its whole subtree has been read, so a size is never published half-made.
-func treeSizes(roots []string, workers int, cancel <-chan struct{}, onVisit func(dir string), onDone func(index int, size int64)) []int64 {
+// When sameFS is set each walk is confined to the filesystem its root sits on.
+func treeSizes(roots []string, workers int, cancel <-chan struct{}, sameFS bool, onVisit func(dir string), onDone func(index int, size int64)) []int64 {
 	sums := make([]atomic.Int64, len(roots))
 	outstanding := make([]atomic.Int32, len(roots))
 	jobs := make([]walkJob, len(roots))
 	for i, r := range roots {
 		jobs[i] = walkJob{dir: r, tag: i}
+		if sameFS {
+			if dev, ok := fsDevice(r); ok {
+				jobs[i].dev, jobs[i].sameFS = dev, true
+			}
+		}
 		outstanding[i].Store(1)
 	}
 
@@ -648,7 +671,7 @@ func (s *Scanner) Scan(roots []string, ruleIDs []string) Result {
 	stopMeasureHeartbeat := s.heartbeat(200*time.Millisecond, "measure", len(phase1),
 		func() int { return int(measured.Load()) }, func() int64 { return totalAll.Load() })
 
-	treeSizes(toMeasure, workers, s.stop,
+	treeSizes(toMeasure, workers, s.stop, false,
 		func(dir string) {
 			s.dirsVisited.Add(1)
 			s.curPath.Store(dir)

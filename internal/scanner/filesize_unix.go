@@ -16,3 +16,17 @@ func FileBytes(info os.FileInfo) int64 {
 	}
 	return info.Size()
 }
+
+// fsDevice returns an identifier for the filesystem dir lives on, so a walk can
+// stop at a mount boundary instead of following into another volume. ok is false
+// when it cannot be determined; callers then treat everything as one filesystem.
+func fsDevice(dir string) (id uint64, ok bool) {
+	st, err := os.Lstat(dir)
+	if err != nil {
+		return 0, false
+	}
+	if sys, isStat := st.Sys().(*syscall.Stat_t); isStat {
+		return uint64(sys.Dev), true
+	}
+	return 0, false
+}

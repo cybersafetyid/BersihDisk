@@ -19,7 +19,7 @@ export function DriveSelector({ drives, selected, onToggle }: Props) {
   return (
     <div className="drive-grid">
       {drives.map((d, i) => {
-        const used = d.totalBytes - d.freeBytes;
+        const used = d.usedBytes;
         const percent = d.totalBytes > 0 ? Math.min(100, (used / d.totalBytes) * 100) : 0;
         const active = selected.has(d.mountPoint);
         const iconName = d.removable ? "usb" : d.root ? "monitor" : "harddrive";

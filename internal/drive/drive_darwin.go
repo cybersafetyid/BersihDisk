@@ -6,6 +6,7 @@ package drive
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -25,8 +26,27 @@ func statfs(d Info) (Info, error) {
 	return d, nil
 }
 
+// volumeName returns the label Finder shows for the volume at mountPoint. diskutil
+// is always present on macOS; on any failure, or the "-" diskutil prints for an
+// unlabelled volume, it falls back to the given name (usually the mount point's).
+func volumeName(mountPoint, fallback string) string {
+	out, err := exec.Command("diskutil", "info", mountPoint).Output()
+	if err != nil {
+		return fallback
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "Volume Name:"); ok {
+			if name := strings.TrimSpace(rest); name != "" && name != "-" {
+				return name
+			}
+		}
+	}
+	return fallback
+}
+
 func detectDarwin() ([]Info, error) {
-	rootInfo, err := statfs(Info{Name: "Macintosh HD", MountPoint: "/", Root: true})
+	root := Info{Name: volumeName("/", "Macintosh HD"), MountPoint: "/", Root: true}
+	rootInfo, err := statfs(root)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +64,7 @@ func detectDarwin() ([]Info, error) {
 		if !isMountPoint(mp) {
 			continue // stale mount-point dir of an unmounted disk, not a volume
 		}
-		d, err := statfs(Info{Name: e.Name(), MountPoint: mp})
+		d, err := statfs(Info{Name: volumeName(mp, e.Name()), MountPoint: mp})
 		if err != nil {
 			continue // dangling/ disconnected disk image
 		}

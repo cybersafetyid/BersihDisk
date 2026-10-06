@@ -1,17 +1,31 @@
-// format.ts — display formatting utilities (Indonesian UI strings).
+// format.ts — display formatting utilities, localised to the active language.
+import type { Lang } from "./types";
 
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
+
+// The active language drives number and decimal formatting. It defaults to
+// Indonesian (the app's primary locale); the i18n hook syncs it on every change.
+let currentLang: Lang = "id";
+
+/** Sets the locale used by the formatters; call once per language change. */
+export function setLocale(lang: Lang): void {
+  currentLang = lang;
+}
+
+// toLocale uses "," for a decimal point, id-ID "." for thousands; en-US the reverse.
+const numberLocale = () => (currentLang === "en" ? "en-US" : "id-ID");
+const decimalSeparator = () => (currentLang === "en" ? "." : ",");
 
 export function formatSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
   const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), UNITS.length - 1);
   const value = bytes / Math.pow(1024, i);
   const decimals = value >= 100 || i === 0 ? 0 : value >= 10 ? 1 : 2;
-  return `${value.toFixed(decimals).replace(".", ",")} ${UNITS[i]}`;
+  return `${value.toFixed(decimals).replace(".", decimalSeparator())} ${UNITS[i]}`;
 }
 
 export function formatNumber(n: number): string {
-  return new Intl.NumberFormat("id-ID").format(n);
+  return new Intl.NumberFormat(numberLocale()).format(n);
 }
 
 export function formatPercent(part: number, total: number): string {
