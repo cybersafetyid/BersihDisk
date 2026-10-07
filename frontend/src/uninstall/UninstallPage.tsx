@@ -85,9 +85,6 @@ export function UninstallPage({ onNotify, onFreed }: Props) {
 
   return (
     <section className="fade-in">
-      <h2 className="section-title">{t("uninstall.title")}</h2>
-      <p className="page-lead">{t("uninstall.lead")}</p>
-
       <div className="uninstall-toolbar">
         <div className="view-toggle" role="tablist" aria-label={t("uninstall.kinds")}>
           {kinds.map((k) => (
@@ -98,22 +95,32 @@ export function UninstallPage({ onNotify, onFreed }: Props) {
               className={`kind-tab ${kind === k.key ? "active" : ""}`}
               onClick={() => setKind(k.key)}
             >
-              <Icon name={k.icon} size={15} /> {t(`uninstall.kind.${k.key}`)}
+              <Icon name={k.icon} size={15} />
+              <span>{t(`uninstall.kind.${k.key}`)}</span>
               <span className="kind-count">{items.filter((i) => i.kind === k.key).length}</span>
             </button>
           ))}
         </div>
-        <label className="search-box">
-          <Icon name="search" size={15} />
+
+        <div className="analyze-search">
+          <Icon name="search" size={13} className="search-icon" />
           <input
             type="search"
             value={query}
             placeholder={t("uninstall.search")}
             onChange={(e) => setQuery(e.target.value)}
+            className="search-input"
           />
-        </label>
+          {query && (
+            <button className="search-clear" onClick={() => setQuery("")} title="Clear">
+              <Icon name="x" size={12} />
+            </button>
+          )}
+        </div>
+
         <button className="btn btn-ghost btn-small btn-refresh" onClick={load} disabled={loading}>
-          <Icon name="refresh" size={14} /> {t("uninstall.refresh")}
+          <Icon name="refresh" size={14} />
+          <span>{t("uninstall.refresh")}</span>
         </button>
       </div>
 
@@ -137,36 +144,60 @@ export function UninstallPage({ onNotify, onFreed }: Props) {
       {loading ? (
         <InstalledSkeleton />
       ) : shown.length === 0 ? (
-        <p className="empty">{t("uninstall.empty")}</p>
+        <div className="results-empty-filter">
+          <Icon name="search" size={24} />
+          <p>{t("uninstall.empty")}</p>
+        </div>
       ) : (
         <div className="installed-list">
           {shown.slice(0, limit).map((i) => (
             <div key={i.id} className="installed-row">
-              <span className="installed-icon">
+              <div className="installed-icon">
                 {i.provider === "apps" || i.provider === "appx" ? (
                   <AppLogo id={i.id} fallback={i.icon} />
                 ) : (
                   <Icon name={i.icon} size={20} />
                 )}
-              </span>
-              <span className="installed-main">
-                <span className="installed-name">
-                  {i.name}
-                  {i.version && <span className="installed-version">{i.version}</span>}
-                </span>
-                <span className="item-note">
-                  {t(`uninstall.provider.${i.provider}`)}
-                  {i.path ? ` · ${shortPath(i.path, 60)}` : ""}
-                  {(i.notes ?? []).map((n) => ` · ${t(`uninstall.note.${n}`)}`).join("")}
-                </span>
-              </span>
+              </div>
+              <div className="installed-main">
+                <div className="installed-name-row">
+                  <span className="installed-name">{i.name}</span>
+                  {i.version && <span className="installed-version-badge">{i.version}</span>}
+                </div>
+                <div className="installed-meta-row">
+                  <span className="provider-tag">{t(`uninstall.provider.${i.provider}`)}</span>
+                  {i.path && (
+                    <span className="installed-path-badge" title={i.path}>
+                      <Icon name="folder" size={11} />
+                      <span className="installed-path-text">{shortPath(i.path, 54)}</span>
+                      <button
+                        className="installed-path-reveal"
+                        title={t("tree.reveal")}
+                        aria-label={t("tree.revealAria")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          api.reveal(i.path!).catch(() => {});
+                        }}
+                      >
+                        <Icon name="folder-open" size={11} />
+                      </button>
+                    </span>
+                  )}
+                  {(i.notes ?? []).map((n) => (
+                    <span key={n} className="installed-note-tag">
+                      · {t(`uninstall.note.${n}`)}
+                    </span>
+                  ))}
+                </div>
+              </div>
               <button className="btn btn-ghost btn-small btn-uninstall" onClick={() => setOpen(i)}>
-                {t("uninstall.action")}
+                <Icon name="trash" size={13} />
+                <span>{t("uninstall.action")}</span>
               </button>
             </div>
           ))}
           {shown.length > limit && (
-            <button className="btn btn-ghost" onClick={() => setLimit((n) => n + PAGE)}>
+            <button className="btn btn-ghost load-more-btn" onClick={() => setLimit((n) => n + PAGE)}>
               {t("uninstall.showMore", { count: shown.length - limit })}
             </button>
           )}

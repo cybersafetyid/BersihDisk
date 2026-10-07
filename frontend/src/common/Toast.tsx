@@ -1,6 +1,7 @@
 // Toast.tsx — auto-dismissing toast notifications.
 import { useEffect } from "react";
 import { useI18n } from "../i18n/i18n";
+import { Icon } from "./Icon";
 
 export interface ToastData {
   id: number;
@@ -18,11 +19,13 @@ export function Toast({ toast, onClose }: { toast: ToastData; onClose: (id: numb
     return () => clearTimeout(t);
   }, [toast, onClose]);
 
-  const icon = toast.variant === "success" ? "✓" : toast.variant === "error" ? "✕" : "i";
+  const iconName = toast.variant === "success" ? "check" : toast.variant === "error" ? "x" : "info";
 
   return (
     <div className={`toast toast-${toast.variant}`}>
-      <span className={`toast-icon toast-icon-${toast.variant}`}>{icon}</span>
+      <span className={`toast-icon toast-icon-${toast.variant}`}>
+        <Icon name={iconName} size={14} />
+      </span>
       <div className="toast-body">
         <div className="toast-message">{toast.message}</div>
         {toast.detail && <div className="toast-detail">{toast.detail}</div>}
@@ -35,7 +38,9 @@ export function Toast({ toast, onClose }: { toast: ToastData; onClose: (id: numb
           {toast.action.label}
         </button>
       )}
-      <button className="toast-close" onClick={() => onClose(toast.id)} aria-label={t("common.close")}>×</button>
+      <button className="toast-close" onClick={() => onClose(toast.id)} aria-label={t("common.close")}>
+        <Icon name="x" size={14} />
+      </button>
     </div>
   );
 }

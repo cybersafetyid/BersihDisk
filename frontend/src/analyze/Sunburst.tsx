@@ -143,6 +143,19 @@ export function Sunburst({ rings, selected, onDrill, onSelect, onHover, onUp }: 
   return (
     <div className="sunburst-wrap">
       <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="sunburst" role="img" aria-label={t("analyze.chartLabel")}>
+        <defs>
+          <radialGradient id="sunburst-hub-grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="var(--surface-2)" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="var(--surface)" stopOpacity="1" />
+          </radialGradient>
+          <filter id="sunburst-shadow" x="-10%" y="-10%" width="120%" height="120%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#000000" floodOpacity="0.15" />
+          </filter>
+        </defs>
+
+        {/* Ambient background ring */}
+        <circle cx={cx} cy={cy} r={outerR + 4} className="sunburst-bg-track" />
+
         {rings.map((ring, r) => {
           const { r0, r1 } = radius(r);
           return segments(ring, spans[r].a0, spans[r].a1).map((seg) => {
@@ -181,6 +194,15 @@ export function Sunburst({ rings, selected, onDrill, onSelect, onHover, onUp }: 
             );
           });
         })}
+
+        {/* Outer decorative rim for center hub */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={centerR + 1.5}
+          className={`sunburst-center-rim ${rings.length > 1 ? "clickable" : ""}`}
+        />
+
         {/* Center: the folder in view; clicking it steps one level up. */}
         <circle
           cx={cx}
@@ -191,12 +213,42 @@ export function Sunburst({ rings, selected, onDrill, onSelect, onHover, onUp }: 
         >
           <title>{rings.length > 1 ? t("analyze.goUp") : current.path}</title>
         </circle>
-        <text x={cx} y={cy - 6} className="sunburst-center-name" textAnchor="middle">
-          {current.path.split(/[\\/]/).filter(Boolean).pop() ?? current.path}
+
+        {rings.length > 1 && (
+          <g className="sunburst-up-glyph" onClick={onUp}>
+            <circle cx={cx} cy={cy - 22} r={9} className="sunburst-up-pill" />
+            <path
+              d={`M${cx - 4} ${cy - 20} L${cx} ${cy - 24} L${cx + 4} ${cy - 20} M${cx} ${cy - 24} L${cx} ${cy - 18}`}
+              className="sunburst-up-arrow"
+            />
+          </g>
+        )}
+
+        <text
+          x={cx}
+          y={rings.length > 1 ? cy - 4 : cy - 6}
+          className="sunburst-center-name"
+          textAnchor="middle"
+        >
+          {(() => {
+            const raw = current.path.split(/[\\/]/).filter(Boolean).pop() ?? current.path;
+            return raw.length > 14 ? `${raw.slice(0, 12)}…` : raw;
+          })()}
         </text>
-        <text x={cx} y={cy + 12} className="sunburst-center-size" textAnchor="middle">
+        <text
+          x={cx}
+          y={rings.length > 1 ? cy + 13 : cy + 12}
+          className="sunburst-center-size"
+          textAnchor="middle"
+        >
           {formatSize(current.totalBytes)}
         </text>
+
+        {rings.length > 1 && (
+          <text x={cx} y={cy + 27} className="sunburst-center-hint" textAnchor="middle">
+            {t("analyze.goUp")}
+          </text>
+        )}
       </svg>
     </div>
   );

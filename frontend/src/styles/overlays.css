@@ -22,26 +22,85 @@
 .modal-summary { color: var(--text-muted); font-size: 14px; margin-bottom: 20px; }
 .modal-summary strong { color: var(--text); }
 
-.mode-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-header-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.modal-header-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+.modal-header-icon.accent {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 28%, transparent);
+  color: var(--accent);
+}
+.modal-header-icon.danger {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 28%, transparent);
+  color: var(--danger);
+}
+.modal-header-row h2 {
+  margin: 0 0 4px;
+}
+.modal-header-row .modal-summary {
+  margin-bottom: 0;
+}
+
+.mode-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
 .mode-card {
   background: var(--surface-2);
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px;
+  padding: 16px;
   cursor: pointer;
   color: var(--text);
   text-align: left;
   transition: all var(--duration) var(--ease);
   display: flex; flex-direction: column; gap: 4px;
 }
-.mode-card:hover { border-color: var(--accent); }
-.mode-card.active { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
-.mode-card.danger.active { border-color: var(--danger); box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent); }
-.mode-icon { display: grid; place-items: center; width: 34px; height: 34px; color: var(--text-muted); }
-.mode-card.active .mode-icon { color: var(--accent); }
-.mode-card.danger.active .mode-icon { color: var(--danger); }
-.mode-title { font-weight: 800; font-size: 14px; }
-.mode-desc { font-size: 11.5px; color: var(--text-muted); }
+.mode-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.mode-card.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface-2));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.mode-card.danger.active {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 6%, var(--surface-2));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent);
+}
+.mode-icon {
+  display: grid; place-items: center;
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  transition: all var(--duration) var(--ease);
+}
+.mode-card.active .mode-icon {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.mode-card.danger.active .mode-icon {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.mode-title { font-weight: 800; font-size: 14.5px; }
+.mode-desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
 
 .modal-warning {
   margin-top: 16px;

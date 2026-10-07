@@ -47,31 +47,49 @@ export function SettingsMenu({ iconSupported, onOpen }: Props) {
   return (
     <div className="settings-menu" ref={wrap}>
       <button
-        className={`btn btn-ghost btn-small ${open ? "active" : ""}`}
+        className={`btn btn-ghost btn-small settings-trigger-btn ${open ? "active" : ""}`}
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
         title={t("settings.entry")}
       >
-        <Icon name="settings" size={15} />
+        <span className="settings-gear-wrap">
+          <Icon name="settings" size={15} />
+        </span>
         <span className="theme-label">{t("settings.entry")}</span>
+        <Icon name="chevron-down" size={12} className="settings-chevron" />
       </button>
 
       {mounted && (
         <div className={`settings-dropdown ${open ? "" : "closing"}`} role="menu">
-          {items.map((s, i) => (
-            <div key={s.key} className="menu-row" style={{ "--i": i } as React.CSSProperties}>
-              {i > 0 && items[i - 1].group !== s.group && <div className="menu-sep" />}
-              <button
-                role="menuitem"
-                className="menu-item"
-                onClick={() => { setOpen(false); onOpen(s.key); }}
-              >
-                <Icon name={s.icon} size={15} />
-                <span>{t(`settings.sections.${s.key}`)}</span>
-              </button>
-            </div>
-          ))}
+          <div className="dropdown-brand-header">
+            <span className="dropdown-brand-title">{t("settings.title")}</span>
+          </div>
+
+          <div className="dropdown-items-scroll">
+            {items.map((s, i) => {
+              const isFirstOfGroup = i === 0 || items[i - 1].group !== s.group;
+              return (
+                <div key={s.key} className="menu-row" style={{ "--i": i } as React.CSSProperties}>
+                  {isFirstOfGroup && (
+                    <div className="menu-group-header">
+                      <span>{t(`settings.groups.${s.group}`)}</span>
+                    </div>
+                  )}
+                  <button
+                    role="menuitem"
+                    className="menu-item"
+                    onClick={() => { setOpen(false); onOpen(s.key); }}
+                  >
+                    <span className="menu-icon-wrap">
+                      <Icon name={s.icon} size={14} />
+                    </span>
+                    <span className="menu-item-text">{t(`settings.sections.${s.key}`)}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

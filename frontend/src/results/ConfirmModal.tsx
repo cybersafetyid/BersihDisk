@@ -59,11 +59,18 @@ export function ConfirmModal({ itemCount, totalBytes, mode, onMode, onConfirm, o
         className={`modal ${effective === "permanent" || worst === "danger" ? "modal-danger" : ""}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2>{effective === "permanent" ? t("confirm.titlePermanent") : t("confirm.titleTrash")}</h2>
-        <p className="modal-summary">
-          <strong>{formatNumber(itemCount)}</strong> {p("plurals.folder", itemCount)} ·{" "}
-          <strong>{formatSize(totalBytes)}</strong> {t("confirm.willFree")}
-        </p>
+        <div className="modal-header-row">
+          <span className={`modal-header-icon ${effective === "permanent" || worst === "danger" ? "danger" : "accent"}`}>
+            <Icon name={effective === "permanent" ? "eraser" : "trash"} size={22} />
+          </span>
+          <div>
+            <h2>{effective === "permanent" ? t("confirm.titlePermanent") : t("confirm.titleTrash")}</h2>
+            <p className="modal-summary">
+              <strong>{formatNumber(itemCount)}</strong> {p("plurals.folder", itemCount)} ·{" "}
+              <strong>{formatSize(totalBytes)}</strong> {t("confirm.willFree")}
+            </p>
+          </div>
+        </div>
 
         {risks.length > 0 && (
           <div className={`risk-panel risk-${worst}`}>

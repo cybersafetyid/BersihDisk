@@ -1,5 +1,4 @@
-// ScanProgress.tsx — modal two-phase scan progress; backdrop is non-dismissable
-// on purpose so a stray click can't abandon a running scan (cancel = explicit).
+import { Icon } from "../common/Icon";
 import { formatSize, formatNumber } from "../lib/format";
 import { shortPath } from "../lib/format";
 import { useI18n } from "../i18n/i18n";
@@ -20,7 +19,9 @@ export function ScanProgressView({ progress, onCancel }: Props) {
       <div className="progress-panel">
         <div className="progress-head">
           <div className="progress-phase">
-            <span className={`phase-dot ${searching ? "on" : "done"}`}>1</span>
+            <span className={`phase-dot ${searching ? "on" : "done"}`}>
+              {searching ? "1" : <Icon name="check" size={12} />}
+            </span>
             <span className={searching ? "on" : "done"}>{t("scan.searching")}</span>
             <span className={`phase-dot ${searching ? "" : "on"}`}>2</span>
             <span className={searching ? "" : "on"}>{t("scan.measuring")}</span>

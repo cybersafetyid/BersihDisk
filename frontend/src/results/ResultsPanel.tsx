@@ -63,7 +63,7 @@ interface RowProps {
 }
 
 function Row({ node, depth, selected, onToggle, onSelectMany, onReveal, onEntries, onExclude }: RowProps) {
-  const { t } = useI18n();
+  const { t, p } = useI18n();
   // A row is ticked when it, or a folder above it, is selected: deleting the folder
   // removes the row too, so the UI must not show it as unselected.
   const inherited = useMemo(() => coveredByAncestor(selected, node.path), [selected, node.path]);
@@ -123,13 +123,19 @@ function Row({ node, depth, selected, onToggle, onSelectMany, onReveal, onEntrie
     if (next) void load();
   };
 
-  const indent = 12 + depth * 18;
   const blocked = node.level === "blocked";
   const level = node.level ?? "safe";
 
+  // File extension for display chip
+  const fileExt = !node.isDir && node.name.includes(".") && !node.name.startsWith(".")
+    ? node.name.split(".").pop()?.toUpperCase()
+    : null;
+
   return (
-    <>
-      <label className={`item-row ${checked ? "checked" : ""} ${level !== "safe" ? `row-${level}` : ""}`} style={{ paddingLeft: indent }}>
+    <div className={`tree-node-wrap ${depth > 0 ? "tree-child-wrap" : ""}`}>
+      <label
+        className={`item-row ${checked ? "checked" : ""} ${level !== "safe" ? `row-${level}` : ""} ${depth > 0 ? "item-row-child" : ""}`}
+      >
         <input
           ref={box}
           type="checkbox"
@@ -150,9 +156,18 @@ function Row({ node, depth, selected, onToggle, onSelectMany, onReveal, onEntrie
         ) : (
           <span className="tree-spacer" />
         )}
+        <div className={`node-type-badge ${node.isDir ? "badge-folder" : "badge-file"}`}>
+          <Icon name={node.isDir ? (open ? "folder-open" : "folder") : (node.note ? "copy" : "file")} size={14} />
+        </div>
         <span className="item-main" onDoubleClick={node.isDir ? toggleOpen : undefined}>
-          <span className="item-path" title={node.path}>
-            {depth === 0 ? shortPath(node.path, 64) : node.name}
+          <span className="item-name-row">
+            <span className="item-path" title={node.path}>
+              {depth === 0 ? shortPath(node.path, 64) : node.name}
+            </span>
+            {fileExt && <span className="file-ext-chip">{fileExt}</span>}
+            {node.isDir && kids && (
+              <span className="dir-count-chip">{kids.length} {p("plurals.item", kids.length)}</span>
+            )}
           </span>
           {node.note && <span className="item-note">{node.note}</span>}
         </span>
@@ -164,33 +179,40 @@ function Row({ node, depth, selected, onToggle, onSelectMany, onReveal, onEntrie
           aria-label={t("tree.revealAria")}
           onClick={stop(() => onReveal(node.path))}
         >
-          <Icon name="folder-open" size={15} />
+          <Icon name="folder-open" size={14} />
         </button>
       </label>
 
       {open && (
-        <div className="tree-kids">
-          {loading && <div className="tree-status" style={{ paddingLeft: indent + 18 }}>{t("tree.loading")}</div>}
-          {error && <div className="tree-status" style={{ paddingLeft: indent + 18 }}>{error}</div>}
-          {kids?.map((k) => (
-            <Row
-              key={k.path}
-              node={k}
-              depth={depth + 1}
-              selected={selected}
-              onToggle={onToggle}
-              onSelectMany={onSelectMany}
-              onReveal={onReveal}
-              onEntries={onEntries}
-              onExclude={excludeChild}
-            />
-          ))}
-          {kids && kids.length === 0 && !loading && !error && (
-            <div className="tree-status" style={{ paddingLeft: indent + 18 }}>{t("tree.empty")}</div>
-          )}
+        <div className="tree-kids-wrapper">
+          <div className="tree-kids-list">
+            {loading && (
+              <div className="tree-status-row">
+                <Icon name="refresh" size={13} className="spin" />
+                <span>{t("tree.loading")}</span>
+              </div>
+            )}
+            {error && <div className="tree-status-row error">{error}</div>}
+            {kids?.map((k) => (
+              <Row
+                key={k.path}
+                node={k}
+                depth={depth + 1}
+                selected={selected}
+                onToggle={onToggle}
+                onSelectMany={onSelectMany}
+                onReveal={onReveal}
+                onEntries={onEntries}
+                onExclude={excludeChild}
+              />
+            ))}
+            {kids && kids.length === 0 && !loading && !error && (
+              <div className="tree-status-row muted">{t("tree.empty")}</div>
+            )}
+          </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
@@ -209,11 +231,16 @@ interface Props {
 export function ResultsPanel({ result, categories, selected, onToggleItem, onSelectMany, onReveal, onEntries, refreshKey = 0 }: Props) {
   const { t, p } = useI18n();
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [query, setQuery] = useState("");
 
   // Group by category, sorted by total size desc.
   const groups = useMemo(() => {
+    const q = query.trim().toLowerCase();
     const m = new Map<string, ScanItem[]>();
     for (const it of result.items) {
+      if (q && !it.path.toLowerCase().includes(q) && !it.category.toLowerCase().includes(q)) {
+        continue;
+      }
       const arr = m.get(it.category) ?? [];
       arr.push(it);
       m.set(it.category, arr);
@@ -221,7 +248,7 @@ export function ResultsPanel({ result, categories, selected, onToggleItem, onSel
     return [...m.entries()].sort(
       (a, b) => b[1].reduce((s, i) => s + i.size, 0) - a[1].reduce((s, i) => s + i.size, 0),
     );
-  }, [result]);
+  }, [result, query]);
 
   const categoryName = (id: string) => t(`categories.${id}.name`);
   const categoryIcon = (id: string) => categories.find((c) => c.id === id)?.icon ?? "eraser";
@@ -248,21 +275,43 @@ export function ResultsPanel({ result, categories, selected, onToggleItem, onSel
     <div className="results-panel">
       <div className="results-toolbar">
         <div className="results-summary">
-          <strong>{formatNumber(result.itemCount)}</strong> {p("plurals.folder", result.itemCount)} ·{" "}
-          <strong className="accent">{formatSize(result.totalBytes)}</strong> {t("results.canFree")}
+          <span className="summary-pill">
+            <Icon name="folder" size={14} />
+            <strong>{formatNumber(result.itemCount)}</strong> {p("plurals.folder", result.itemCount)} ·{" "}
+            <strong className="accent">{formatSize(result.totalBytes)}</strong> {t("results.canFree")}
+          </span>
           {result.partial && <span className="badge badge-risk"> {t("results.partial")}</span>}
           {result.dirsSkipped > 0 && (
             <span className="muted"> {t("results.skipped", { count: formatNumber(result.dirsSkipped) })}</span>
           )}
         </div>
-        <div className="results-actions">
-          <button className="btn btn-ghost btn-small" onClick={pickLarge}>{t("results.selectLarge")}</button>
-          <button className="btn btn-ghost btn-small" onClick={() => onSelectMany(pickable(result.items), true)}>
-            {t("results.selectAll")}
-          </button>
-          <button className="btn btn-ghost btn-small" onClick={() => onSelectMany(result.items.map((i) => i.path), false)}>
-            {t("results.deselectAll")}
-          </button>
+
+        <div className="analyze-controls">
+          <div className="analyze-search">
+            <Icon name="search" size={13} className="search-icon" />
+            <input
+              type="text"
+              placeholder={t("results.searchPlaceholder")}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="search-input"
+            />
+            {query && (
+              <button className="search-clear" onClick={() => setQuery("")} title="Clear">
+                <Icon name="x" size={12} />
+              </button>
+            )}
+          </div>
+
+          <div className="results-actions">
+            <button className="btn btn-ghost btn-small" onClick={pickLarge}>{t("results.selectLarge")}</button>
+            <button className="btn btn-ghost btn-small" onClick={() => onSelectMany(pickable(result.items), true)}>
+              {t("results.selectAll")}
+            </button>
+            <button className="btn btn-ghost btn-small" onClick={() => onSelectMany(result.items.map((i) => i.path), false)}>
+              {t("results.deselectAll")}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -292,12 +341,15 @@ export function ResultsPanel({ result, categories, selected, onToggleItem, onSel
                   className="group-toggle"
                   onClick={() => setCollapsed((s) => { const n = new Set(s); n.has(catId) ? n.delete(catId) : n.add(catId); return n; })}
                 >
-                  <span className={`arrow ${groupCollapsed ? "folded" : ""}`}>▾</span>
-                  <span className="group-icon"><Icon name={categoryIcon(catId)} size={17} /></span>
-                  <span className="group-name">{categoryName(catId)}</span>
-                  <span className="group-info">
-                    {t("results.groupInfo", { count: items.length, size: formatSize(total) })}
+                  <span className={`group-chevron-wrap ${groupCollapsed ? "folded" : ""}`}>
+                    <Icon name="chevron-down" size={13} />
                   </span>
+                  <div className="group-icon-badge">
+                    <Icon name={categoryIcon(catId)} size={16} />
+                  </div>
+                  <span className="group-name">{categoryName(catId)}</span>
+                  <span className="group-count-chip">{items.length}</span>
+                  <span className="group-size-val">{formatSize(total)}</span>
                 </button>
                 <button className="btn btn-ghost btn-small" onClick={() => toggleGroup(items)} disabled={selectable.length === 0}>
                   {t(allChecked ? "results.deselectGroup" : "results.selectGroup")}

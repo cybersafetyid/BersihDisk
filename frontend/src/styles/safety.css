@@ -3,15 +3,29 @@
 
 /* Level colours in one place: caution = amber, danger = red, blocked = grey. */
 .risk-badge {
-  display: inline-flex; align-items: center; gap: 4px;
+  display: inline-flex; align-items: center; gap: 5px;
   flex-shrink: 0;
-  font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px;
-  padding: 3px 8px; border-radius: 99px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.2px;
+  padding: 3px 9px; border-radius: 99px;
   cursor: help;
+  transition: all var(--duration) var(--ease);
 }
-.risk-caution { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
-.risk-danger { background: var(--danger-bg); color: var(--danger); }
-.risk-blocked { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+.risk-caution {
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, transparent);
+}
+.risk-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--danger) 15%, transparent);
+}
+.risk-blocked {
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
 
 .badge-caution { background: color-mix(in srgb, var(--warning) 16%, transparent); color: var(--warning); }
 .badge-caution svg { vertical-align: -1px; }
@@ -55,13 +69,30 @@
 .risk-list-why { font-size: 12px; color: var(--text-muted); margin: 2px 0 0 2px; line-height: 1.45; }
 
 .risk-ack {
-  display: flex; align-items: flex-start; gap: 10px;
+  display: flex; align-items: center; gap: 12px;
   margin-top: 16px;
+  padding: 12px 15px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
   font-size: 13px; line-height: 1.45;
   cursor: pointer;
+  transition: all var(--duration) var(--ease);
 }
-.risk-ack input { margin-top: 3px; cursor: pointer; }
-.risk-ack.danger { color: var(--danger); font-weight: 700; }
+.risk-ack:hover {
+  background: var(--surface);
+  border-color: color-mix(in srgb, var(--warning) 40%, var(--border));
+}
+.risk-ack input { flex-shrink: 0; cursor: pointer; }
+.risk-ack.danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+  background: var(--danger-bg);
+  font-weight: 700;
+}
+.risk-ack.danger:hover {
+  border-color: var(--danger);
+}
 
 .mode-card:disabled { opacity: 0.5; cursor: not-allowed; }
 .mode-card:disabled:hover { border-color: var(--border); }

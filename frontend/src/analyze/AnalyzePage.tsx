@@ -187,30 +187,94 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
     });
   };
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "dirs" | "files">("all");
+
+  // Reset search when folder navigation occurs
+  useEffect(() => {
+    setSearchQuery("");
+  }, [current?.path]);
+
+  const filteredEntries = useMemo(() => {
+    if (!current) return [];
+    let list = current.entries;
+    if (filterType === "dirs") list = list.filter((e) => e.isDir);
+    else if (filterType === "files") list = list.filter((e) => !e.isDir);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter((e) => e.name.toLowerCase().includes(q));
+    }
+    return list;
+  }, [current, filterType, searchQuery]);
+
+  // Overall drives stats for hero overview
+  const totalStorageAll = useMemo(() => drives.reduce((acc, d) => acc + d.totalBytes, 0), [drives]);
+  const totalUsedAll = useMemo(() => drives.reduce((acc, d) => acc + d.usedBytes, 0), [drives]);
+  const totalFreeAll = useMemo(() => drives.reduce((acc, d) => acc + d.freeBytes, 0), [drives]);
+
   return (
     <section className="analyze fade-in">
-      <div className="analyze-head">
-        <div>
-          <h2 className="section-title">{t("analyze.title")}</h2>
-          <p className="analyze-lead">{t("analyze.lead")}</p>
-        </div>
-        {drive && (
-          <button className="btn btn-ghost btn-small" onClick={() => { setDrive(null); setRings([]); cancel(); }}>
-            {t("analyze.changeDrive")}
-          </button>
-        )}
-      </div>
+
 
       {drives.length === 0 && <div className="empty">{t("drive.none")}</div>}
 
       {drives.length > 0 && !drive && (
-        <DriveSelector drives={drives} selected={new Set()} onToggle={chooseDrive} />
+        <div className="analyze-landing">
+          <div className="analyze-hero-strip">
+            <div className="hero-stat-card">
+              <div className="hero-stat-icon">
+                <Icon name="harddrive" size={20} />
+              </div>
+              <div className="hero-stat-data">
+                <span className="hero-stat-val">{drives.length}</span>
+                <span className="hero-stat-lbl">{t("analyze.totalVolumes")}</span>
+              </div>
+            </div>
+            <div className="hero-stat-card">
+              <div className="hero-stat-icon icon-used">
+                <Icon name="pie-chart" size={20} />
+              </div>
+              <div className="hero-stat-data">
+                <span className="hero-stat-val">{formatSize(totalUsedAll)}</span>
+                <span className="hero-stat-lbl">{t("analyze.totalUsed")}</span>
+              </div>
+            </div>
+            <div className="hero-stat-card">
+              <div className="hero-stat-icon icon-free">
+                <Icon name="shield-check" size={20} />
+              </div>
+              <div className="hero-stat-data">
+                <span className="hero-stat-val free-val">{formatSize(totalFreeAll)}</span>
+                <span className="hero-stat-lbl">{t("analyze.totalFree")}</span>
+              </div>
+            </div>
+            <div className="hero-stat-card">
+              <div className="hero-stat-icon">
+                <Icon name="monitor" size={20} />
+              </div>
+              <div className="hero-stat-data">
+                <span className="hero-stat-val">{formatSize(totalStorageAll)}</span>
+                <span className="hero-stat-lbl">{t("drive.total", { size: "" }).trim() || "Total"}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="analyze-drive-prompt">
+            <div className="prompt-header">
+              <h3>{t("analyze.driveOverview")}</h3>
+              <p>{t("analyze.driveSubtitle")}</p>
+            </div>
+            <DriveSelector drives={drives} selected={new Set()} onToggle={chooseDrive} />
+          </div>
+        </div>
       )}
 
       {drive && (
         <>
           <nav className="crumbs" aria-label={t("analyze.crumbs")}>
-            <span className="crumb-root" aria-hidden="true"><Icon name="harddrive" size={15} /></span>
+            <span className="crumb-root" aria-hidden="true" title="Root Drive">
+              <Icon name="harddrive" size={15} />
+            </span>
             <div className="crumb-track">
               {rings.map((r, i) => {
                 const last = i === rings.length - 1;
@@ -230,11 +294,19 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
                 );
               })}
             </div>
-            <span className="crumb-status">
-              {analyzing
-                ? t("analyze.working")
-                : `${formatNumber(current?.entries.length ?? 0)} ${p("plurals.item", current?.entries.length ?? 0)}`}
-            </span>
+            <div className="crumb-right">
+              {rings.length > 1 && (
+                <button className="btn btn-ghost btn-small crumb-up-btn" onClick={up} title={t("analyze.goUp")}>
+                  <Icon name="arrow-left" size={13} />
+                  <span>{t("analyze.goUp")}</span>
+                </button>
+              )}
+              <span className="crumb-status">
+                {analyzing
+                  ? t("analyze.working")
+                  : `${formatNumber(current?.entries.length ?? 0)} ${p("plurals.item", current?.entries.length ?? 0)}`}
+              </span>
+            </div>
           </nav>
 
           {error && (
@@ -255,16 +327,26 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
                   onHover={setHovered}
                   onUp={up}
                 />
-                <div className="analyze-hover">
+                <div className={`analyze-hover ${hovered ? "has-hover" : "is-idle"}`}>
                   {hovered ? (
-                    <>
-                      <span className="hover-name">{hovered.name}</span>
-                      <span className="hover-size">{formatSize(hovered.size)}</span>
-                      {hovered.level !== "safe" && <RiskBadge level={hovered.level} reasons={hovered.reasons} />}
-                      <span className="hover-path" title={hovered.path}>{shortPath(hovered.path, 54)}</span>
-                    </>
+                    <div className="hover-inspector">
+                      <div className="hover-top">
+                        <span className="hover-icon">
+                          <Icon name={hovered.isDir ? "folder" : hovered.isLink ? "copy" : "file"} size={16} />
+                        </span>
+                        <span className="hover-name" title={hovered.name}>{hovered.name}</span>
+                        <span className="hover-size-chip">{formatSize(hovered.size)}</span>
+                        <span className="hover-percent-chip">{formatPercent(hovered.size, current.totalBytes)}</span>
+                        {hovered.level !== "safe" && <RiskBadge level={hovered.level} reasons={hovered.reasons} />}
+                      </div>
+                      <div className="hover-path-row" title={hovered.path}>
+                        <span className="hover-path">{shortPath(hovered.path, 54)}</span>
+                      </div>
+                    </div>
                   ) : (
-                    <span className="muted">{t("analyze.hoverHint")}</span>
+                    <div className="hover-idle">
+                      <span>{t("analyze.idleHint")}</span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -272,20 +354,75 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
               <div className="analyze-panel">
                 <div className="results-toolbar">
                   <div className="results-summary">
-                    <strong className="accent">{formatSize(current.totalBytes)}</strong> {t("analyze.inFolder")} ·{" "}
-                    {formatNumber(current.entries.length)} {p("plurals.item", current.entries.length)}
+                    <span className="summary-pill">
+                      <Icon name="folder" size={14} />
+                      <strong className="accent">{formatSize(current.totalBytes)}</strong>
+                      <span className="muted">· {formatNumber(current.entries.length)} {p("plurals.item", current.entries.length)}</span>
+                    </span>
                     {current.partial && <span className="badge badge-risk"> {t("analyze.partial")}</span>}
                   </div>
-                  <div className="results-actions">
-                    <button className="btn btn-ghost btn-small" onClick={() => selectMany(largePaths, true)} disabled={largePaths.length === 0}>
-                      {t("results.selectLarge")}
-                    </button>
-                    <button className="btn btn-ghost btn-small" onClick={() => selectMany(safePaths, true)} disabled={safePaths.length === 0}>
-                      {t("results.selectAll")}
-                    </button>
-                    <button className="btn btn-ghost btn-small" onClick={() => setSelected(new Set())} disabled={selected.size === 0}>
-                      {t("results.deselectAll")}
-                    </button>
+
+                  <div className="analyze-controls">
+                    <div className="analyze-search">
+                      <Icon name="search" size={13} className="search-icon" />
+                      <input
+                        type="text"
+                        placeholder={t("analyze.searchPlaceholder")}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="search-input"
+                      />
+                      {searchQuery && (
+                        <button className="search-clear" onClick={() => setSearchQuery("")} title="Clear">
+                          <Icon name="x" size={12} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="filter-group">
+                      <button
+                        className={`filter-btn ${filterType === "all" ? "active" : ""}`}
+                        onClick={() => setFilterType("all")}
+                      >
+                        {t("analyze.filterAll")}
+                      </button>
+                      <button
+                        className={`filter-btn ${filterType === "dirs" ? "active" : ""}`}
+                        onClick={() => setFilterType("dirs")}
+                      >
+                        {t("analyze.filterDirs")}
+                      </button>
+                      <button
+                        className={`filter-btn ${filterType === "files" ? "active" : ""}`}
+                        onClick={() => setFilterType("files")}
+                      >
+                        {t("analyze.filterFiles")}
+                      </button>
+                    </div>
+
+                    <div className="results-actions">
+                      <button
+                        className="btn btn-ghost btn-small"
+                        onClick={() => selectMany(largePaths, true)}
+                        disabled={largePaths.length === 0}
+                      >
+                        {t("results.selectLarge")}
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-small"
+                        onClick={() => selectMany(safePaths, true)}
+                        disabled={safePaths.length === 0}
+                      >
+                        {t("results.selectAll")}
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-small"
+                        onClick={() => setSelected(new Set())}
+                        disabled={selected.size === 0}
+                      >
+                        {t("results.deselectAll")}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -302,10 +439,19 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
 
                 <div className="analyze-list">
                   {current.entries.length === 0 && <p className="results-empty">{t("analyze.empty")}</p>}
-                  {(showAll ? current.entries : current.entries.slice(0, LIST_CAP)).map((e, i) => {
+                  {current.entries.length > 0 && filteredEntries.length === 0 && (
+                    <div className="results-empty-filter">
+                      <Icon name="search" size={24} />
+                      <p>{t("analyze.noResults")}</p>
+                    </div>
+                  )}
+
+                  {(showAll ? filteredEntries : filteredEntries.slice(0, LIST_CAP)).map((e, i) => {
                     const checked = selected.has(e.path);
                     const blocked = e.level === "blocked";
                     const isDir = e.isDir && !e.skipped;
+                    const percentOfTotal = current.totalBytes > 0 ? (e.size / current.totalBytes) * 100 : 0;
+
                     return (
                       <div
                         key={e.path}
@@ -318,19 +464,40 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
                           onChange={() => toggle(e)}
                           aria-label={t("analyze.select", { name: e.name })}
                         />
-                        <span className="analyze-swatch" style={{ background: e.level === "blocked" ? "var(--border)" : paletteColor(i) }} />
+                        <span
+                          className="analyze-swatch"
+                          style={{ background: e.level === "blocked" ? "var(--border)" : paletteColor(i) }}
+                        />
+                        <div className="analyze-type-badge">
+                          <Icon name={isDir ? "folder" : e.isLink ? "copy" : "file"} size={14} />
+                        </div>
                         {isDir ? (
-                          <button className="analyze-name analyze-drill" onClick={() => drill(e, rings.length - 1)} title={t("analyze.open", { name: e.name })}>
-                            <Icon name="folder" size={15} />
+                          <button
+                            className="analyze-name analyze-drill"
+                            onClick={() => drill(e, rings.length - 1)}
+                            title={t("analyze.open", { name: e.name })}
+                          >
                             <span className="analyze-name-text">{e.name}</span>
+                            <Icon name="chevron-right" size={13} className="drill-arrow" />
                           </button>
                         ) : (
                           <span className="analyze-name" title={e.path}>
-                            <Icon name={e.isLink ? "copy" : "file"} size={15} />
                             <span className="analyze-name-text">{e.name}</span>
                           </span>
                         )}
                         <RiskBadge level={e.level} reasons={e.reasons} />
+
+                        {/* Relative meter showing proportion in current folder */}
+                        <div className="analyze-meter" title={`${formatPercent(e.size, current.totalBytes)}`}>
+                          <div
+                            className="analyze-meter-fill"
+                            style={{
+                              width: `${Math.min(100, Math.max(2, percentOfTotal))}%`,
+                              background: e.level === "blocked" ? "var(--border)" : paletteColor(i),
+                            }}
+                          />
+                        </div>
+
                         <span className="analyze-size">{formatSize(e.size)}</span>
                         <span className="analyze-percent">{formatPercent(e.size, current.totalBytes)}</span>
                         <button className="tree-reveal" title={t("tree.reveal")} onClick={() => onReveal(e.path)}>
@@ -339,9 +506,9 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
                       </div>
                     );
                   })}
-                  {!showAll && current.entries.length > LIST_CAP && (
+                  {!showAll && filteredEntries.length > LIST_CAP && (
                     <button className="btn btn-ghost btn-small analyze-more" onClick={() => setShowAll(true)}>
-                      {t("analyze.showMore", { count: formatNumber(current.entries.length - LIST_CAP) })}
+                      {t("analyze.showMore", { count: formatNumber(filteredEntries.length - LIST_CAP) })}
                     </button>
                   )}
                 </div>
@@ -350,29 +517,47 @@ export function AnalyzePage({ drives, refreshKey, onNotify, onReveal, onDelete }
           )}
 
           <div className="action-bar">
-            {deletePaths.length === 0 ? (
-              <span className="action-info muted">{t("analyze.selectHint")}</span>
-            ) : (
-              <span className="action-info">{t("results.selectedCount", { count: deletePaths.length, size: formatSize(selectedBytes) })}</span>
-            )}
+            <button
+              className="btn btn-ghost btn-with-icon"
+              onClick={() => { setDrive(null); setRings([]); cancel(); }}
+            >
+              <Icon name="harddrive" size={14} />
+              <span>{t("analyze.changeDrive")}</span>
+            </button>
             <div className="action-right">
-              <button className="btn btn-primary btn-large" disabled={deletePaths.length === 0} onClick={requestDelete}>
-                {t("results.deleteSelected")}
+              {deletePaths.length === 0 ? (
+                <span className="action-info muted">{t("analyze.selectHint")}</span>
+              ) : (
+                <span className="action-info">
+                  {t("results.selectedCount", { count: deletePaths.length, size: formatSize(selectedBytes) })}
+                </span>
+              )}
+              <button
+                className="btn btn-primary btn-large btn-with-icon"
+                disabled={deletePaths.length === 0}
+                onClick={requestDelete}
+              >
+                <Icon name="trash" size={16} />
+                <span>{t("results.deleteSelected")}</span>
               </button>
             </div>
           </div>
 
           {analyzing && (
             <div className="modal-backdrop">
-              <div className="progress-panel">
+              <div className="progress-panel analyze-scanner-modal">
                 <div className="progress-head">
                   <div className="progress-phase">
-                    <span className="phase-dot on"><Icon name="pie-chart" size={13} /></span>
+                    <span className="phase-dot on radar-pulse">
+                      <Icon name="pie-chart" size={14} />
+                    </span>
                     <span className="on">{t("analyze.scanning")}</span>
                   </div>
                   <button className="btn btn-ghost btn-small" onClick={cancel}>{t("scan.cancel")}</button>
                 </div>
-                <div className="progress-track"><div className="progress-fill indeterminate" /></div>
+                <div className="progress-track">
+                  <div className="progress-fill indeterminate" />
+                </div>
                 <div className="progress-meta">
                   <span>{t("analyze.reading", { count: formatNumber(progress?.dirs ?? 0) })}</span>
                   <span className="muted">{t("analyze.measureNote")}</span>

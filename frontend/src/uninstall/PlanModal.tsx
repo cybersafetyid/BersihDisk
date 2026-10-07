@@ -79,16 +79,25 @@ export function PlanModal({ item, onClose }: Props) {
   return (
     <div className="modal-backdrop" onClick={busy ? undefined : close}>
       <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
-        <h2>{t("uninstall.planTitle", { name: item.name })}</h2>
+        <div className="modal-header-row">
+          <span className="modal-header-icon accent">
+            <Icon name="package" size={22} />
+          </span>
+          <div>
+            <h2>{t("uninstall.planTitle", { name: item.name })}</h2>
+            {phase === "loading" && <p className="modal-summary">{t("uninstall.planning")}</p>}
+            {plan && phase === "review" && (
+              <p className="modal-summary">
+                {t("uninstall.planSummary", { steps: chosen.length, size: formatSize(freed) })}
+              </p>
+            )}
+          </div>
+        </div>
 
-        {phase === "loading" && <p className="modal-summary">{t("uninstall.planning")}</p>}
         {error && <p className="modal-warning"><Icon name="triangle-alert" size={16} /><span>{error}</span></p>}
 
         {plan && phase === "review" && (
           <>
-            <p className="modal-summary">
-              {t("uninstall.planSummary", { steps: chosen.length, size: formatSize(freed) })}
-            </p>
             {(plan.warnings ?? []).map((w) => (
               <div key={w.code} className="risk-banner">
                 <Icon name="triangle-alert" size={16} />

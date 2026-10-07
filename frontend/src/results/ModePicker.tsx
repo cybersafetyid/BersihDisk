@@ -25,7 +25,7 @@ export function ModePicker({ mode, onMode, lockTrash }: Props) {
         disabled={lockTrash}
         title={lockTrash ? t("safety.trashOnly") : undefined}
       >
-        <span className="mode-icon"><Icon name="cpu" size={22} /></span>
+        <span className="mode-icon"><Icon name="eraser" size={20} /></span>
         <span className="mode-title">{t("confirm.permanent")}</span>
         <span className="mode-desc">{lockTrash ? t("safety.trashOnly") : t("confirm.permanentDesc")}</span>
       </button>

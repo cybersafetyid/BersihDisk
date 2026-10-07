@@ -96,7 +96,11 @@ export function Dropdown({ label, icon, items }: Props) {
               >
                 <Icon name={it.icon} size={15} />
                 <span className="menu-label">{it.label}</span>
-                {it.checked && <span className="menu-check" aria-hidden="true">✓</span>}
+                {it.checked && (
+                  <span className="menu-check" aria-hidden="true">
+                    <Icon name="check" size={12} />
+                  </span>
+                )}
               </button>
             </div>
           ))}

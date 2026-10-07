@@ -18,6 +18,7 @@ import { SettingsMenu } from "./settings/SettingsMenu";
 import { SettingsPage } from "./settings/SettingsPage";
 import type { Section } from "./settings/sections";
 import { Toast, type ToastData } from "./common/Toast";
+import { AppLoader } from "./common/AppLoader";
 import brandLogo from "./assets/brand/logo.svg";
 
 import { useAppliedSettings } from "./hooks/useAppliedSettings";
@@ -329,16 +330,12 @@ export default function App() {
       </header>
 
       <main
-        className="content"
+        className={`content ${loading ? "content-loading" : ""}`}
         ref={contentRef}
         onScroll={(e) => setShowToTop(e.currentTarget.scrollTop > 320)}
       >
         {loading ? (
-          <div className="skeleton-wrap">
-            <div className="skeleton skeleton-card" />
-            <div className="skeleton skeleton-card" />
-            <div className="skeleton skeleton-card" />
-          </div>
+          <AppLoader />
         ) : stage === "settings" ? (
           <SettingsPage
             section={section}
@@ -352,10 +349,16 @@ export default function App() {
           <UninstallPage onNotify={notify} onFreed={() => api.detectDrives().then(setDrives).catch(() => {})} />
         ) : stage === "select" && (
           <section className="fade-in">
-            <h2 className="section-title">{t("drive.step")}</h2>
+            <div className="section-header-row">
+              <span className="section-step-badge">1</span>
+              <h2 className="section-title">{t("drive.step")}</h2>
+            </div>
             <DriveSelector drives={drives} selected={selectedDrives} onToggle={toggleDrive} />
 
-            <h2 className="section-title">{t("category.step")}</h2>
+            <div className="section-header-row">
+              <span className="section-step-badge">2</span>
+              <h2 className="section-title">{t("category.step")}</h2>
+            </div>
             <CategoryPanel
               categories={categories}
               selected={selectedCategories}
@@ -372,8 +375,9 @@ export default function App() {
                   categoryWord: p("plurals.category", selectedCategories.size),
                 })}
               </span>
-              <button className="btn btn-primary btn-large" disabled={!canScan} onClick={startScan}>
-                {t("scan.start")}
+              <button className="btn btn-primary btn-large btn-with-icon" disabled={!canScan} onClick={startScan}>
+                <Icon name="search" size={16} />
+                <span>{t("scan.start")}</span>
               </button>
             </div>
           </section>
@@ -391,7 +395,10 @@ export default function App() {
 
         {stage === "results" && result && (
           <section className="fade-in">
-            <h2 className="section-title">{t("results.title")}</h2>
+            <div className="section-header-row">
+              <span className="section-step-badge accent"><Icon name="list-checks" size={14} /></span>
+              <h2 className="section-title">{t("results.title")}</h2>
+            </div>
             <ResultsPanel
               result={result}
               categories={categories}
@@ -403,19 +410,21 @@ export default function App() {
               refreshKey={refreshKey}
             />
             <div className="action-bar">
-              <button className="btn btn-ghost" onClick={() => { setStage("select"); setResult(null); }}>
-                {t("results.rescan")}
+              <button className="btn btn-ghost btn-with-icon" onClick={() => { setStage("select"); setResult(null); }}>
+                <Icon name="refresh" size={14} />
+                <span>{t("results.rescan")}</span>
               </button>
               <div className="action-right">
                 <span className="action-info">
                   {t("results.selectedCount", { count: selectedCount, size: formatSize(selectedBytes) })}
                 </span>
                 <button
-                  className="btn btn-primary btn-large"
+                  className="btn btn-primary btn-large btn-with-icon"
                   disabled={selectedCount === 0}
                   onClick={openCleanConfirm}
                 >
-                  {t("results.deleteSelected")}
+                  <Icon name="trash" size={16} />
+                  <span>{t("results.deleteSelected")}</span>
                 </button>
               </div>
             </div>
