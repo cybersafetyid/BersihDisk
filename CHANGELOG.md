@@ -10,6 +10,13 @@ each release is tagged `vX.Y.Z`.
 
 [Riwayat versi Bahasa Indonesia →](#catatan-versi-bahasa-indonesia)
 
+## [1.1.3] - 2026-10-07
+
+### Changed
+
+- update Indonesian README with layout and content improvements (`000facd`)
+- improve disk analysis UI with enhanced sunburst visualization, search filters, and drive overview metrics (`56766c4`)
+
 ## [1.1.2] - 2026-10-06
 
 ### Added
